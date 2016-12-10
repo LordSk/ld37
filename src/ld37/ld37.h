@@ -123,6 +123,11 @@ struct ENTITY ASkeleton: Actor
 	f64 turnCooldownMax = 0.5;
 	f64 turnCooldown = 0;
 
+	f64 nextRandomGruntCD_min = 1.0;
+	f64 nextRandomGruntCD_max = 2.0;
+	f64 nextRandomGruntCD;
+	lsk_Array<u32, 12> gruntNameHashes;
+
 	ASkeleton();
 
 	void beginPlay() override;

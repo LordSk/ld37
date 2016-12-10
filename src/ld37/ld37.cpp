@@ -2,6 +2,7 @@
 #include "ordinator.h"
 #include <lsk/lsk_console.h>
 #include <engine/timer.h>
+#include <engine/audio.h>
 
 #define SKELETON_AGGRO_RANGE 180.f
 
@@ -161,6 +162,12 @@ ASkeleton::ASkeleton()
 	healthComp = Ord.make_CHealth();
 	healthComp->dmgGroup = DamageGroup::ENEMY;
 	attackRange = 18;
+
+	nextRandomGruntCD = nextRandomGruntCD_min +
+			lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
+
+	gruntNameHashes.push(H("snd_skeleton_grunt1.ogg"));
+	gruntNameHashes.push(H("snd_skeleton_grunt2.ogg"));
 }
 
 void ASkeleton::beginPlay()
@@ -175,6 +182,13 @@ void ASkeleton::update(f64 delta)
 
 	input = {};
 	attackAnimCooldown -= delta;
+	nextRandomGruntCD -= delta;
+
+	if(nextRandomGruntCD <= 0.0) {
+		nextRandomGruntCD = nextRandomGruntCD_min +
+				lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
+		AudioGet.play(gruntNameHashes[lsk_rand() % gruntNameHashes.count()]);
+	}
 
 	// attack !
 	f32 targetXDelta = target->pos.x - transform->position.x;
@@ -255,6 +269,11 @@ ASkeletonBigShield::ASkeletonBigShield()
 	turnCooldownMax = 1.0;
 	attackRange = 30;
 	attackTimeMax = 1.0;
+
+	gruntNameHashes.clear();
+	gruntNameHashes.push(H("snd_skeleton_big_grunt1.ogg"));
+	gruntNameHashes.push(H("snd_skeleton_big_grunt2.ogg"));
+	gruntNameHashes.push(H("snd_skeleton_big_grunt3.ogg"));
 }
 
 void ASkeletonBigShield::attack()

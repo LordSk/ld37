@@ -26,7 +26,7 @@ void AudioManager::play(u32 soundNameHash)
 void AudioManager::update()
 {
 	for(u32 soundNameHash: _playlist) {
-		_soloud.play(*_soundData.geth(soundNameHash), 0.5f);
+		_soloud.play(*_soundData.geth(soundNameHash), 1.0f);
 	}
 
 	_playlist.clear();
