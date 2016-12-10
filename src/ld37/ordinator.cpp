@@ -9,6 +9,11 @@ Ref<Sprite> Ordinator::make_Sprite()
 	return _comp_Sprite.push(Sprite());
 }
 
+Ref<CTarget> Ordinator::make_CTarget()
+{
+	return _comp_CTarget.push(CTarget());
+}
+
 Ref<Actor> Ordinator::spawn_Actor()
 {
 	return _entity_Actor.push(Actor());
@@ -39,13 +44,32 @@ void Ordinator::destroy_APlayer(APlayer& ent)
 	_entity_APlayer.remove(ent);
 }
 
+Ref<ASkeleton> Ordinator::spawn_ASkeleton()
+{
+	return _entity_ASkeleton.push(ASkeleton());
+}
+
+void Ordinator::destroy_ASkeleton(ASkeleton& ent)
+{
+	ent.transform->endPlay();
+	_comp_Transform.remove(ent.transform);
+	ent.body_debugSprite->endPlay();
+	_comp_Sprite.remove(ent.body_debugSprite);
+	ent.target->endPlay();
+	_comp_CTarget.remove(ent.target);
+	ent.endPlay();
+	_entity_ASkeleton.remove(ent);
+}
+
 void Ordinator::init()
 {
 	// TODO: determine starting capacities depending on the game
 	_comp_Transform.init(32);
 	_comp_Sprite.init(32);
+	_comp_CTarget.init(32);
 	_entity_Actor.init(32);
 	_entity_APlayer.init(32);
+	_entity_ASkeleton.init(32);
 }
 
 void Ordinator::update(f64 delta)
@@ -62,6 +86,12 @@ void Ordinator::update(f64 delta)
 			--i;
 		}
 	}
+	for(i32 i = 0; i < _entity_ASkeleton.count(); ++i) {
+		if(_entity_ASkeleton.data(i)._markedAsDestroy) {
+			destroy_ASkeleton(_entity_ASkeleton.data(i));
+			--i;
+		}
+	}
 
 	for(auto& comp : _comp_Transform) {
 		comp.update(delta);
@@ -69,11 +99,17 @@ void Ordinator::update(f64 delta)
 	for(auto& comp : _comp_Sprite) {
 		comp.update(delta);
 	}
+	for(auto& comp : _comp_CTarget) {
+		comp.update(delta);
+	}
 
 	for(auto& ent : _entity_Actor) {
 		ent.update(delta);
 	}
 	for(auto& ent : _entity_APlayer) {
+		ent.update(delta);
+	}
+	for(auto& ent : _entity_ASkeleton) {
 		ent.update(delta);
 	}
 }
@@ -88,6 +124,10 @@ void Ordinator::destroy()
 		comp.endPlay();
 	}
 	_comp_Sprite.destroy();
+	for(auto& comp : _comp_CTarget) {
+		comp.endPlay();
+	}
+	_comp_CTarget.destroy();
 	for(auto& ent : _entity_Actor) {
 		ent.endPlay();
 	}
@@ -96,5 +136,9 @@ void Ordinator::destroy()
 		ent.endPlay();
 	}
 	_entity_APlayer.destroy();
+	for(auto& ent : _entity_ASkeleton) {
+		ent.endPlay();
+	}
+	_entity_ASkeleton.destroy();
 }
 

@@ -2,15 +2,16 @@
 #include "ordinator.h"
 #include <lsk/lsk_console.h>
 
+#define SKELETON_AGGRO_RANGE 180.f
+
 Actor::Actor()
 {
 	transform = Ord.make_Transform();
 	transform->position.z = 1;
 }
 
-void Actor::initBody(lsk_Vec2 pos, lsk_Vec2 size)
+void Actor::setPos(lsk_Vec2 pos)
 {
-	body = Physics.bodiesDynamic.push(BodyRectAligned(size.x, size.y));
 	body->setPos(pos);
 	transform->position.x = pos.x;
 	transform->position.y = pos.y;
@@ -37,7 +38,7 @@ APlayer::APlayer()
 
 void APlayer::beginPlay()
 {
-	initBody({50, 20}, {14, 36});
+	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
 }
 
 void APlayer::update(f64 delta)
@@ -79,6 +80,60 @@ void APlayer::update(f64 delta)
 bool APlayer::isGrounded() const
 {
 	return body->intersecting && body->vel.y >= 0 && body->y_locked;
+}
+
+void APlayer::takeDamage()
+{
+	--health;
+	if(health <= 0) {
+		// TODO: dead
+	}
+}
+
+ASkeleton::ASkeleton()
+{
+	target = Ord.make_CTarget();
+}
+
+void ASkeleton::beginPlay()
+{
+	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
+}
+
+void ASkeleton::update(f64 delta)
+{
+	Actor::update(delta);
+
+	input = {};
+
+	// attack !
+	f32 targetXDelta = target->pos.x - transform->position.x;
+	if(lsk_abs(targetXDelta) < SKELETON_AGGRO_RANGE) {
+		input.x = lsk_sign(targetXDelta);
+		if(lsk_abs(targetXDelta) < 18) {
+			input.x = 0;
+			input.attack = 1;
+		}
+	}
+
+	f32 xSpeed = 50.f;
+
+	if(input.x == 1) {
+		body->vel.x = xSpeed;
+	}
+	else if(input.x == -1) {
+		body->vel.x = -xSpeed;
+	}
+	else {
+		body->vel.x = 0;
+	}
+
+	attackCooldown -= delta;
+	if(input.attack && attackCooldown <= 0.0) {
+		body->vel.x = 0;
+		lsk_printf("SMACK!");
+		attackCooldown = 2.5;
+	}
 }
 
 bool LD37_Window::postInit()
@@ -133,9 +188,21 @@ bool LD37_Window::postInit()
 		}
 	}
 
-
 	player = Ord.spawn_APlayer();
 	player->beginPlay();
+
+	for(const auto& layer: gamemap.objectLayers) {
+		for(const auto& obj: layer.objects) {
+			if(H(obj.type.c_str()) == H("player_spawn")) {
+				player->setPos({(f32)obj.x, (f32)obj.y});
+			}
+			else if(H(obj.type.c_str()) == H("skeleton_spawn")) {
+				auto skeleton = Ord.spawn_ASkeleton();
+				skeleton->beginPlay();
+				skeleton->setPos({(f32)obj.x, (f32)obj.y});
+			}
+		}
+	}
 
 	return true;
 }
@@ -167,6 +234,11 @@ void LD37_Window::update(f64 delta)
 							 statBody.box.max - statBody.box.min);
 	}
 #endif
+
+	for(auto& comp: Ord._comp_CTarget) {
+		comp.pos.x = player->transform->position.x;
+		comp.pos.y = player->transform->position.y;
+	}
 }
 
 void LD37_Window::render()

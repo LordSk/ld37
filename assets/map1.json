@@ -21,8 +21,42 @@
          "width":250,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "height":13,
+         "name":"objects",
+         "objects":[
+                {
+                 "height":36,
+                 "id":1,
+                 "name":"",
+                 "rotation":0,
+                 "type":"player_spawn",
+                 "visible":true,
+                 "width":14,
+                 "x":51.3333333333333,
+                 "y":131
+                }, 
+                {
+                 "height":36,
+                 "id":2,
+                 "name":"",
+                 "rotation":0,
+                 "type":"skeleton_spawn",
+                 "visible":true,
+                 "width":14,
+                 "x":210.333333333333,
+                 "y":131.333333333333
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "width":250,
+         "x":0,
+         "y":0
         }],
- "nextobjectid":1,
+ "nextobjectid":3,
  "orientation":"orthogonal",
  "renderorder":"left-up",
  "tileheight":14,

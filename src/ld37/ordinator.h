@@ -10,6 +10,8 @@ struct Ordinator
 	Ref<Transform> make_Transform();
 	lsk_DSparseArray<Sprite> _comp_Sprite;
 	Ref<Sprite> make_Sprite();
+	lsk_DSparseArray<CTarget> _comp_CTarget;
+	Ref<CTarget> make_CTarget();
 
 	lsk_DSparseArray<Actor> _entity_Actor;
 	Ref<Actor> spawn_Actor();
@@ -23,6 +25,13 @@ struct Ordinator
 	void destroy_APlayer(APlayer& ent);
 	inline void destroy_APlayer(Ref<APlayer>& ref) {
 		destroy_APlayer(ref.get());
+		ref.clear();
+	}
+	lsk_DSparseArray<ASkeleton> _entity_ASkeleton;
+	Ref<ASkeleton> spawn_ASkeleton();
+	void destroy_ASkeleton(ASkeleton& ent);
+	inline void destroy_ASkeleton(Ref<ASkeleton>& ref) {
+		destroy_ASkeleton(ref.get());
 		ref.clear();
 	}
 
