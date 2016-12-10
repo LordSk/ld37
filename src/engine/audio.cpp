@@ -5,6 +5,7 @@ bool AudioManager::init()
 {
 	_soloud.init();
 	_soundData.init(16);
+	_soundStrMap.init(16);
 	_playlist.init(32);
 
 	return true;
@@ -12,6 +13,7 @@ bool AudioManager::init()
 
 void AudioManager::destroy()
 {
+	_soundStrMap.destroy();
 	_soundData.destroy();
 	_playlist.destroy();
 	_soloud.deinit();
@@ -19,19 +21,19 @@ void AudioManager::destroy()
 
 void AudioManager::play(u32 soundNameHash)
 {
-	assert(_soundData.geth(soundNameHash));
-	_playlist.push(soundNameHash);
+	assert(_soundStrMap.geth(soundNameHash));
+	_playlist.push(*_soundStrMap.geth(soundNameHash));
 }
 
 void AudioManager::update()
 {
-	for(u32 soundNameHash: _playlist) {
-		_soloud.play(*_soundData.geth(soundNameHash), 1.0f);
+	for(auto& wavRef: _playlist) {
+		_soloud.play(wavRef.get(), 1.0f);
 	}
 
 	_playlist.clear();
 }
-
+/*
 bool AudioManager::loadFromDisk(const char* path, u32 soundNameHash)
 {
 	SoLoud::Wav& wav = _soundData.seth(soundNameHash, SoLoud::Wav());
@@ -42,10 +44,12 @@ bool AudioManager::loadFromDisk(const char* path, u32 soundNameHash)
 	lsk_errf("AudioManager::loadFromDisk(%s): could not read file", path);
 	return false;
 }
-
+*/
 bool AudioManager::loadFromMem(u8* data, u32 dataSize, u32 soundNameHash)
 {
-	SoLoud::Wav& wav = _soundData.seth(soundNameHash, SoLoud::Wav());
+	auto ref = _soundData.push(SoLoud::Wav());
+	SoLoud::Wav& wav = ref.get();
+	_soundStrMap.seth(soundNameHash, ref);
 	if(wav.loadMem(data, dataSize, true, true) == 0) {
 		lsk_succf("AudioManager::loadFromMem(): load success");
 		return true;

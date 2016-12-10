@@ -166,8 +166,12 @@ ASkeleton::ASkeleton()
 	nextRandomGruntCD = nextRandomGruntCD_min +
 			lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
 
-	gruntNameHashes.push(H("snd_skeleton_grunt1.ogg"));
-	gruntNameHashes.push(H("snd_skeleton_grunt2.ogg"));
+	sndGruntNameHashes.push(H("snd_skeleton_grunt1.ogg"));
+	sndGruntNameHashes.push(H("snd_skeleton_grunt2.ogg"));
+
+	sndAttackNameHashes.push(H("snd_skeleton_attack1.ogg"));
+	sndAttackNameHashes.push(H("snd_skeleton_attack2.ogg"));
+	sndAttackNameHashes.push(H("snd_skeleton_attack3.ogg"));
 }
 
 void ASkeleton::beginPlay()
@@ -184,10 +188,10 @@ void ASkeleton::update(f64 delta)
 	attackAnimCooldown -= delta;
 	nextRandomGruntCD -= delta;
 
-	if(nextRandomGruntCD <= 0.0) {
+	if(nextRandomGruntCD <= 0.0 && attackAnimCooldown <= 0) {
 		nextRandomGruntCD = nextRandomGruntCD_min +
 				lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
-		AudioGet.play(gruntNameHashes[lsk_rand() % gruntNameHashes.count()]);
+		AudioGet.play(sndGruntNameHashes[lsk_rand() % sndGruntNameHashes.count()]);
 	}
 
 	// attack !
@@ -236,6 +240,7 @@ void ASkeleton::update(f64 delta)
 	if(attackAnimCooldown > 0 && attackAnimCooldown < attackTime) {
 		lsk_printf("SMACK!");
 		attack();
+		AudioGet.play(sndAttackNameHashes[lsk_rand() % sndAttackNameHashes.count()]);
 		attackTime = 0;
 	}
 
@@ -270,10 +275,15 @@ ASkeletonBigShield::ASkeletonBigShield()
 	attackRange = 30;
 	attackTimeMax = 1.0;
 
-	gruntNameHashes.clear();
-	gruntNameHashes.push(H("snd_skeleton_big_grunt1.ogg"));
-	gruntNameHashes.push(H("snd_skeleton_big_grunt2.ogg"));
-	gruntNameHashes.push(H("snd_skeleton_big_grunt3.ogg"));
+	sndGruntNameHashes.clear();
+	sndGruntNameHashes.push(H("snd_skeleton_big_grunt1.ogg"));
+	sndGruntNameHashes.push(H("snd_skeleton_big_grunt2.ogg"));
+	sndGruntNameHashes.push(H("snd_skeleton_big_grunt3.ogg"));
+
+	sndAttackNameHashes.clear();
+	sndAttackNameHashes.push(H("snd_skeleton_big_attack1.ogg"));
+	sndAttackNameHashes.push(H("snd_skeleton_big_attack2.ogg"));
+	sndAttackNameHashes.push(H("snd_skeleton_big_attack3.ogg"));
 }
 
 void ASkeletonBigShield::attack()

@@ -126,7 +126,8 @@ struct ENTITY ASkeleton: Actor
 	f64 nextRandomGruntCD_min = 1.0;
 	f64 nextRandomGruntCD_max = 2.0;
 	f64 nextRandomGruntCD;
-	lsk_Array<u32, 12> gruntNameHashes;
+	lsk_Array<u32, 3> sndGruntNameHashes;
+	lsk_Array<u32, 3> sndAttackNameHashes;
 
 	ASkeleton();
 
