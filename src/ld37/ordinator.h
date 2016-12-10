@@ -10,6 +10,8 @@ struct Ordinator
 	Ref<Transform> make_Transform();
 	lsk_DSparseArray<Sprite> _comp_Sprite;
 	Ref<Sprite> make_Sprite();
+	lsk_DSparseArray<CBodyComponent> _comp_CBodyComponent;
+	Ref<CBodyComponent> make_CBodyComponent();
 	lsk_DSparseArray<CHealth> _comp_CHealth;
 	Ref<CHealth> make_CHealth();
 	lsk_DSparseArray<CTarget> _comp_CTarget;

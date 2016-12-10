@@ -15,26 +15,15 @@ Actor::Actor()
 {
 	transform = Ord.make_Transform();
 	transform->position.z = 1;
+	bodyComp = Ord.make_CBodyComponent();
+	bodyComp->transform = transform;
 }
 
 void Actor::setPos(lsk_Vec2 pos)
 {
-	body->setPos(pos);
+	bodyComp->body->setPos(pos);
 	transform->position.x = pos.x;
 	transform->position.y = pos.y;
-}
-
-void Actor::update(f64 delta)
-{
-	assert(body.valid());
-	transform->position.x = body->box.min.x;
-	transform->position.y = body->box.min.y;
-}
-
-void Actor::endPlay()
-{
-	assert(body.valid());
-	Physics.bodiesDynamic.remove(body);
 }
 
 
@@ -95,13 +84,16 @@ APlayer::APlayer()
 {
 	healthComp = Ord.make_CHealth();
 	healthComp->dmgGroup = DamageGroup::PLAYER;
+	sprite = Ord.make_Sprite();
+	sprite->transform = transform;
+	sprite->materialName = H("explorer_still_right.material");
+	sprite->size = {16, 38};
 }
 
 void APlayer::beginPlay()
 {
-	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
-	body->group = BODYGROUP_PLAYER;
-	healthComp->body = body;
+	bodyComp->init({16, 38}, BODYGROUP_PLAYER);
+	healthComp->body = bodyComp->body;
 }
 
 void APlayer::update(f64 delta)
@@ -116,8 +108,8 @@ void APlayer::update(f64 delta)
 			dir = -1;
 		}
 
-		body->vel.x = dir * 200.f;
-		body->vel.y = -100.f;
+		bodyComp->body->vel.x = dir * 200.f;
+		bodyComp->body->vel.y = -100.f;
 		stunned = true;
 	}
 
@@ -126,13 +118,15 @@ void APlayer::update(f64 delta)
 		f32 jumpSpeed = 220.f;
 
 		if(input.x == 1) {
-			body->vel.x = xSpeed;
+			bodyComp->body->vel.x = xSpeed;
+			sprite->materialName = H("explorer_still_right.material");
 		}
 		else if(input.x == -1) {
-			body->vel.x = -xSpeed;
+			bodyComp->body->vel.x = -xSpeed;
+			sprite->materialName = H("explorer_still_left.material");
 		}
 		else {
-			body->vel.x = 0;
+			bodyComp->body->vel.x = 0;
 		}
 
 		if(input.jump && !prevInput.jump) {
@@ -147,7 +141,7 @@ void APlayer::update(f64 delta)
 			}
 
 			if(canJump) {
-				body->vel.y = -jumpSpeed;
+				bodyComp->body->vel.y = -jumpSpeed;
 			}
 		}
 	}
@@ -157,7 +151,7 @@ void APlayer::update(f64 delta)
 
 bool APlayer::isGrounded() const
 {
-	return body->intersecting && body->vel.y >= 0 && body->y_locked;
+	return bodyComp->body->intersecting && bodyComp->body->vel.y >= 0 && bodyComp->body->y_locked;
 }
 
 ASkeleton::ASkeleton()
@@ -171,9 +165,8 @@ ASkeleton::ASkeleton()
 
 void ASkeleton::beginPlay()
 {
-	body = Physics.bodiesDynamic.push(BodyRectAligned(bodySize.x, bodySize.y));
-	body->group = BODYGROUP_SKELETON;
-	healthComp->body = body;
+	bodyComp->init(bodySize, BODYGROUP_SKELETON);
+	healthComp->body = bodyComp->body;
 }
 
 void ASkeleton::update(f64 delta)
@@ -188,7 +181,9 @@ void ASkeleton::update(f64 delta)
 	if(lsk_abs(targetXDelta) < SKELETON_AGGRO_RANGE) {
 		input.x = lsk_sign(targetXDelta);
 		if(lsk_abs(targetXDelta) < attackRange) {
-			input.x = 0;
+			if(dir == input.x) {
+				input.x = 0;
+			}
 			input.attack = 1;
 		}
 	}
@@ -207,20 +202,20 @@ void ASkeleton::update(f64 delta)
 
 	if(input.x == 1) {
 		if(canAdvance) {
-			body->vel.x = xSpeed;
+			bodyComp->body->vel.x = xSpeed;
 			dir = 1;
 			turnCooldown = turnCooldownMax;
 		}
 	}
 	else if(input.x == -1) {
 		if(canAdvance) {
-			body->vel.x = -xSpeed;
+			bodyComp->body->vel.x = -xSpeed;
 			dir = -1;
 			turnCooldown = turnCooldownMax;
 		}
 	}
 	else {
-		body->vel.x = 0;
+		bodyComp->body->vel.x = 0;
 	}
 
 	// actual attack
@@ -246,7 +241,7 @@ void ASkeleton::attack()
 	lsk_Vec2 fieldPos = pos;
 	fieldPos.x += xOffset;
 
-	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, 0.5, pos);
+	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, 0.2, pos);
 }
 
 ASkeletonBigShield::ASkeletonBigShield()
@@ -270,9 +265,7 @@ void ASkeletonBigShield::attack()
 	lsk_Vec2 fieldPos = pos;
 	fieldPos.x += xOffset;
 
-	lsk_printf("dir=%d fieldPos.x=%.1f pos.x=%.1f", dir, fieldPos.x, pos.x);
-
-	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, 0.5, pos);
+	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, 0.2, pos);
 }
 
 bool LD37_Window::postInit()
@@ -357,27 +350,29 @@ void LD37_Window::preExit()
 
 void LD37_Window::update(f64 delta)
 {
+	Physics.update(delta);
 	IGameWindow::update(delta);
 	DamageFieldManager::get().update(delta);
 	Ord.update(delta);
-	Physics.update(delta);
 
-	Renderer.viewSetPos(player->body->box.min.x - 50, 0);
+	Renderer.viewSetPos(player->bodyComp->body->box.min.x - 50, 0);
 
 	gamemap.draw();
 
 #ifdef CONF_DEBUG
-	for(const auto& dynBody: Physics.bodiesDynamic) {
-		Renderer.queueSprite(H("body_dynamic.material"), 1000, dynBody.box.min,
-							 dynBody.box.max - dynBody.box.min);
-	}
-	for(const auto& statBody: Physics.bodiesStatic) {
-		Renderer.queueSprite(H("body_static.material"), 1000, statBody.box.min,
-							 statBody.box.max - statBody.box.min);
-	}
-	for(const auto& field: DamageFieldManager::get().fields) {
-		Renderer.queueSprite(H("body_static.material"), 1000, field.box.min,
-							 field.box.max - field.box.min);
+	if(debugCollisions) {
+		for(const auto& dynBody: Physics.bodiesDynamic) {
+			Renderer.queueSprite(H("body_dynamic.material"), 1000, dynBody.box.min,
+								 dynBody.box.max - dynBody.box.min);
+		}
+		for(const auto& statBody: Physics.bodiesStatic) {
+			Renderer.queueSprite(H("body_static.material"), 1000, statBody.box.min,
+								 statBody.box.max - statBody.box.min);
+		}
+		for(const auto& field: DamageFieldManager::get().fields) {
+			Renderer.queueSprite(H("body_static.material"), 1000, field.box.min,
+								 field.box.max - field.box.min);
+		}
 	}
 #endif
 
@@ -433,6 +428,11 @@ bool LD37_Window::handleEvent(SDL_Event event)
 			player->input.jump = 0;
 			return true;
 		}
+
+		if(event.key.keysym.sym == SDLK_c) {
+			debugCollisions ^= 1;
+			return true;
+		}
 	}
 
 	return true;
@@ -464,4 +464,23 @@ i32 main()
 	}
 	window.run();
 	return 0;
+}
+
+void CBodyComponent::init(const lsk_Vec2& size, i32 bodyGroup)
+{
+	body = Physics.bodiesDynamic.push(BodyRectAligned(size.x, size.y));
+	body->group = bodyGroup;
+}
+
+void CBodyComponent::update(f64 delta)
+{
+	assert(body.valid());
+	transform->position.x = body->box.min.x;
+	transform->position.y = body->box.min.y;
+}
+
+void CBodyComponent::endPlay()
+{
+	assert(body.valid());
+	Physics.bodiesDynamic.remove(body);
 }

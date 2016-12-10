@@ -5,17 +5,24 @@
 #include <engine/base_entity.h>
 #include <engine/physics.h>
 
-struct ENTITY Actor: IEntityBase
+struct COMPONENT CBodyComponent
 {
 	Ref<Transform> transform;
 	Ref<BodyRectAligned> body;
-	Ref<Sprite> body_debugSprite;
+
+	void init(const lsk_Vec2& size, i32 bodyGroup);
+	void update(f64 delta);
+	void endPlay();
+};
+
+struct ENTITY Actor: IEntityBase
+{
+	Ref<Transform> transform;
+	Ref<CBodyComponent> bodyComp;
 
 	Actor();
 
 	void setPos(lsk_Vec2 pos);
-	virtual void update(f64 delta) override;
-	void endPlay() override;
 };
 
 enum class DamageGroup: i32 {
@@ -53,7 +60,7 @@ struct COMPONENT CHealth
 	i32 maxHealth = 2;
 	i32 health = maxHealth;
 	DamageGroup dmgGroup = DamageGroup::INVALID;
-	f64 dmgCooldownMax = 0.5;
+	f64 dmgCooldownMax = 0.25;
 	f64 dmgCooldown = 0.0;
 	f64 lastDamageTime = 0.0;
 	DamageField lastSource;
@@ -76,6 +83,7 @@ struct Input
 
 struct ENTITY APlayer: Actor
 {
+	Ref<Sprite> sprite;
 	Ref<CHealth> healthComp;
 	Input prevInput;
 	Input input;
@@ -136,6 +144,7 @@ struct LD37_Window: IGameWindow
 	Archive assets;
 	TiledMap gamemap;
 	Ref<APlayer> player;
+	bool debugCollisions = true;
 
 	bool postInit() override;
 	void preExit() override;
