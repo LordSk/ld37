@@ -100,24 +100,34 @@ struct COMPONENT CTarget
 
 struct ENTITY ASkeleton: Actor
 {
+	lsk_Vec2 bodySize;
 	Ref<CTarget> target;
 	Ref<CHealth> healthComp;
 	Input input;
 	i32 dir = -1;
 
 	f32 xSpeed = 50.f;
-	f64 attackCooldownMax = 2.5;
-	f64 attackCooldown = 0;
-	f64 attackTime = 1.0;
-	f64 turnCooldownMax = 1.0;
+	f64 attackAnimCooldownMax = 1.5;
+	f64 attackAnimCooldown = 0;
+	f64 attackTime = 0;
+	f64 attackTimeMax = 0.5;
+	f32 attackRange = 18;
+	f64 turnCooldownMax = 0.5;
 	f64 turnCooldown = 0;
 
 	ASkeleton();
 
 	void beginPlay() override;
 	void update(f64 delta) override;
-
 	virtual void attack();
+};
+
+struct ENTITY ASkeletonBigShield: ASkeleton
+{
+	ASkeletonBigShield();
+
+	//void update(f64 delta) override;
+	void attack() override;
 };
 
 

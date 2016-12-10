@@ -70,6 +70,25 @@ void Ordinator::destroy_ASkeleton(ASkeleton& ent)
 	_entity_ASkeleton.remove(ent);
 }
 
+Ref<ASkeletonBigShield> Ordinator::spawn_ASkeletonBigShield()
+{
+	return _entity_ASkeletonBigShield.push(ASkeletonBigShield());
+}
+
+void Ordinator::destroy_ASkeletonBigShield(ASkeletonBigShield& ent)
+{
+	ent.transform->endPlay();
+	_comp_Transform.remove(ent.transform);
+	ent.body_debugSprite->endPlay();
+	_comp_Sprite.remove(ent.body_debugSprite);
+	ent.target->endPlay();
+	_comp_CTarget.remove(ent.target);
+	ent.healthComp->endPlay();
+	_comp_CHealth.remove(ent.healthComp);
+	ent.endPlay();
+	_entity_ASkeletonBigShield.remove(ent);
+}
+
 void Ordinator::init()
 {
 	// TODO: determine starting capacities depending on the game
@@ -80,6 +99,7 @@ void Ordinator::init()
 	_entity_Actor.init(32);
 	_entity_APlayer.init(32);
 	_entity_ASkeleton.init(32);
+	_entity_ASkeletonBigShield.init(32);
 }
 
 void Ordinator::update(f64 delta)
@@ -99,6 +119,12 @@ void Ordinator::update(f64 delta)
 	for(i32 i = 0; i < _entity_ASkeleton.count(); ++i) {
 		if(_entity_ASkeleton.data(i)._markedAsDestroy) {
 			destroy_ASkeleton(_entity_ASkeleton.data(i));
+			--i;
+		}
+	}
+	for(i32 i = 0; i < _entity_ASkeletonBigShield.count(); ++i) {
+		if(_entity_ASkeletonBigShield.data(i)._markedAsDestroy) {
+			destroy_ASkeletonBigShield(_entity_ASkeletonBigShield.data(i));
 			--i;
 		}
 	}
@@ -123,6 +149,9 @@ void Ordinator::update(f64 delta)
 		ent.update(delta);
 	}
 	for(auto& ent : _entity_ASkeleton) {
+		ent.update(delta);
+	}
+	for(auto& ent : _entity_ASkeletonBigShield) {
 		ent.update(delta);
 	}
 }
@@ -157,5 +186,9 @@ void Ordinator::destroy()
 		ent.endPlay();
 	}
 	_entity_ASkeleton.destroy();
+	for(auto& ent : _entity_ASkeletonBigShield) {
+		ent.endPlay();
+	}
+	_entity_ASkeletonBigShield.destroy();
 }
 

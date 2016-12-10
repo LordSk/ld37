@@ -5,6 +5,12 @@
 
 #define SKELETON_AGGRO_RANGE 180.f
 
+enum: i32 {
+	BODYGROUP_PLAYER = 0,
+	BODYGROUP_SKELETON,
+	BODYGROUP_BOSS,
+};
+
 Actor::Actor()
 {
 	transform = Ord.make_Transform();
@@ -94,6 +100,7 @@ APlayer::APlayer()
 void APlayer::beginPlay()
 {
 	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
+	body->group = BODYGROUP_PLAYER;
 	healthComp->body = body;
 }
 
@@ -101,6 +108,7 @@ void APlayer::update(f64 delta)
 {
 	Actor::update(delta);
 
+	// knockback from damage
 	bool stunned = false;
 	if(healthComp->lastDamageTime != 0 && Timers.getTime() - healthComp->lastDamageTime < 0.15) {
 		f32 dir = 1;
@@ -154,14 +162,17 @@ bool APlayer::isGrounded() const
 
 ASkeleton::ASkeleton()
 {
+	bodySize = {14, 34};
 	target = Ord.make_CTarget();
 	healthComp = Ord.make_CHealth();
 	healthComp->dmgGroup = DamageGroup::ENEMY;
+	attackRange = 18;
 }
 
 void ASkeleton::beginPlay()
 {
-	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
+	body = Physics.bodiesDynamic.push(BodyRectAligned(bodySize.x, bodySize.y));
+	body->group = BODYGROUP_SKELETON;
 	healthComp->body = body;
 }
 
@@ -170,13 +181,13 @@ void ASkeleton::update(f64 delta)
 	Actor::update(delta);
 
 	input = {};
-	attackCooldown -= delta;
+	attackAnimCooldown -= delta;
 
 	// attack !
 	f32 targetXDelta = target->pos.x - transform->position.x;
 	if(lsk_abs(targetXDelta) < SKELETON_AGGRO_RANGE) {
 		input.x = lsk_sign(targetXDelta);
-		if(lsk_abs(targetXDelta) < 18) {
+		if(lsk_abs(targetXDelta) < attackRange) {
 			input.x = 0;
 			input.attack = 1;
 		}
@@ -190,7 +201,7 @@ void ASkeleton::update(f64 delta)
 		}
 	}
 
-	if(attackCooldown > attackCooldownMax - 1.0) {
+	if(attackAnimCooldown > 0) {
 		canAdvance = false;
 	}
 
@@ -212,25 +223,56 @@ void ASkeleton::update(f64 delta)
 		body->vel.x = 0;
 	}
 
-	if(input.attack && attackCooldown <= 0.0) {
+	// actual attack
+	if(attackAnimCooldown > 0 && attackAnimCooldown < attackTime) {
 		lsk_printf("SMACK!");
-		attackCooldown = attackCooldownMax;
 		attack();
+		attackTime = 0;
+	}
+
+	// attack animation
+	if(input.attack && attackAnimCooldown <= 0.0) {
+		attackAnimCooldown = attackAnimCooldownMax;
+		attackTime = attackTimeMax;
+		// play attack animation
 	}
 }
 
 void ASkeleton::attack()
 {
-	// play attack animation
-	Timers.add(0.25, [&]{
-		f32 xOffset = 14.f;
-		if(dir == -1) xOffset = -20.f;
-		lsk_Vec2 pos = {transform->position.x, transform->position.y};
-		pos.x += xOffset;
+	lsk_Vec2 pos = {transform->position.x, transform->position.y};
+	f32 xOffset = 14.f;
+	if(dir == -1) xOffset = -20.f;
+	lsk_Vec2 fieldPos = pos;
+	fieldPos.x += xOffset;
 
-		damageFieldCreate(pos, {20, 20}, healthComp->dmgGroup, 0.5,
-			{transform->position.x, transform->position.y});
-	});
+	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, 0.5, pos);
+}
+
+ASkeletonBigShield::ASkeletonBigShield()
+{
+	bodySize = {20, 40};
+	healthComp->maxHealth = 4;
+	healthComp->health = 4;
+
+	xSpeed = 40.f;
+	attackAnimCooldownMax = 2.0;
+	turnCooldownMax = 1.0;
+	attackRange = 30;
+	attackTimeMax = 1.0;
+}
+
+void ASkeletonBigShield::attack()
+{
+	lsk_Vec2 pos = {transform->position.x, transform->position.y};
+	f32 xOffset = bodySize.x;
+	if(dir == -1) xOffset = -20.f;
+	lsk_Vec2 fieldPos = pos;
+	fieldPos.x += xOffset;
+
+	lsk_printf("dir=%d fieldPos.x=%.1f pos.x=%.1f", dir, fieldPos.x, pos.x);
+
+	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, 0.5, pos);
 }
 
 bool LD37_Window::postInit()
@@ -295,7 +337,7 @@ bool LD37_Window::postInit()
 				player->setPos({(f32)obj.x, (f32)obj.y});
 			}
 			else if(H(obj.type.c_str()) == H("skeleton_spawn")) {
-				auto skeleton = Ord.spawn_ASkeleton();
+				auto skeleton = Ord.spawn_ASkeletonBigShield();
 				skeleton->beginPlay();
 				skeleton->setPos({(f32)obj.x, (f32)obj.y});
 			}

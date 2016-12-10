@@ -36,6 +36,13 @@ struct Ordinator
 		destroy_ASkeleton(ref.get());
 		ref.clear();
 	}
+	lsk_DSparseArray<ASkeletonBigShield> _entity_ASkeletonBigShield;
+	Ref<ASkeletonBigShield> spawn_ASkeletonBigShield();
+	void destroy_ASkeletonBigShield(ASkeletonBigShield& ent);
+	inline void destroy_ASkeletonBigShield(Ref<ASkeletonBigShield>& ref) {
+		destroy_ASkeletonBigShield(ref.get());
+		ref.clear();
+	}
 
 	void init();
 	void update(f64 delta);
