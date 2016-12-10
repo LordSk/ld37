@@ -9,6 +9,11 @@ Ref<Sprite> Ordinator::make_Sprite()
 	return _comp_Sprite.push(Sprite());
 }
 
+Ref<CHealth> Ordinator::make_CHealth()
+{
+	return _comp_CHealth.push(CHealth());
+}
+
 Ref<CTarget> Ordinator::make_CTarget()
 {
 	return _comp_CTarget.push(CTarget());
@@ -40,6 +45,8 @@ void Ordinator::destroy_APlayer(APlayer& ent)
 	_comp_Transform.remove(ent.transform);
 	ent.body_debugSprite->endPlay();
 	_comp_Sprite.remove(ent.body_debugSprite);
+	ent.healthComp->endPlay();
+	_comp_CHealth.remove(ent.healthComp);
 	ent.endPlay();
 	_entity_APlayer.remove(ent);
 }
@@ -57,6 +64,8 @@ void Ordinator::destroy_ASkeleton(ASkeleton& ent)
 	_comp_Sprite.remove(ent.body_debugSprite);
 	ent.target->endPlay();
 	_comp_CTarget.remove(ent.target);
+	ent.healthComp->endPlay();
+	_comp_CHealth.remove(ent.healthComp);
 	ent.endPlay();
 	_entity_ASkeleton.remove(ent);
 }
@@ -66,6 +75,7 @@ void Ordinator::init()
 	// TODO: determine starting capacities depending on the game
 	_comp_Transform.init(32);
 	_comp_Sprite.init(32);
+	_comp_CHealth.init(32);
 	_comp_CTarget.init(32);
 	_entity_Actor.init(32);
 	_entity_APlayer.init(32);
@@ -99,6 +109,9 @@ void Ordinator::update(f64 delta)
 	for(auto& comp : _comp_Sprite) {
 		comp.update(delta);
 	}
+	for(auto& comp : _comp_CHealth) {
+		comp.update(delta);
+	}
 	for(auto& comp : _comp_CTarget) {
 		comp.update(delta);
 	}
@@ -124,6 +137,10 @@ void Ordinator::destroy()
 		comp.endPlay();
 	}
 	_comp_Sprite.destroy();
+	for(auto& comp : _comp_CHealth) {
+		comp.endPlay();
+	}
+	_comp_CHealth.destroy();
 	for(auto& comp : _comp_CTarget) {
 		comp.endPlay();
 	}

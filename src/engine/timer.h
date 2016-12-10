@@ -13,9 +13,16 @@ struct TimerManager
 		f64 delay;
 	};
 
+	f64 _time = 0;
 	lsk_Array<Timer, 1024> _timers;
 
+	void reset() {
+		_timers.clear();
+		_time = 0;
+	}
+
 	void udpate(f64 delta) {
+		_time += delta;
 		for(i32 i = 0; i < _timers.count(); ++i) {
 			_timers[i].delay -= delta;
 			if(_timers[i].delay <= 0.0) {
@@ -28,6 +35,10 @@ struct TimerManager
 
 	inline void add(f64 delay, TimerFunction f) {
 		_timers.push({f, delay});
+	}
+
+	inline f64 getTime() const {
+		return _time;
 	}
 };
 

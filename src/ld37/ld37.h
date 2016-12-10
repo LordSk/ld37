@@ -18,6 +18,55 @@ struct ENTITY Actor: IEntityBase
 	void endPlay() override;
 };
 
+enum class DamageGroup: i32 {
+	INVALID = 0,
+	PLAYER,
+	ENEMY
+};
+
+struct DamageField
+{
+	lsk_AABB2 box;
+	lsk_Vec2 sourcePos;
+	DamageGroup dmgGroup;
+	f64 lifetime;
+};
+
+struct DamageFieldManager
+{
+	SINGLETON_IMP(DamageFieldManager)
+
+	lsk_DArray<DamageField> fields;
+
+	void init();
+	void destroy();
+
+	void update(f64 delta);
+};
+
+void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup, f64 lifetime,
+					   const lsk_Vec2& sourcePos);
+
+struct COMPONENT CHealth
+{
+	Ref<BodyRectAligned> body;
+	i32 maxHealth = 2;
+	i32 health = maxHealth;
+	DamageGroup dmgGroup = DamageGroup::INVALID;
+	f64 dmgCooldownMax = 0.5;
+	f64 dmgCooldown = 0.0;
+	f64 lastDamageTime = 0.0;
+	DamageField lastSource;
+
+	void takeDamage(const DamageField& source);
+	void update(f64 delta);
+	void endPlay() {}
+
+	inline bool isDead() const {
+		return health <= 0;
+	}
+};
+
 struct Input
 {
 	i32 x = 0;
@@ -27,12 +76,10 @@ struct Input
 
 struct ENTITY APlayer: Actor
 {
+	Ref<CHealth> healthComp;
 	Input prevInput;
 	Input input;
 	i32 doubleJumps = 0;
-
-	i32 maxHealth = 2;
-	i32 health = maxHealth;
 
 	APlayer();
 
@@ -41,7 +88,6 @@ struct ENTITY APlayer: Actor
 
 	bool canJump() const;
 	bool isGrounded() const;
-	void takeDamage();
 };
 
 struct COMPONENT CTarget
@@ -55,13 +101,23 @@ struct COMPONENT CTarget
 struct ENTITY ASkeleton: Actor
 {
 	Ref<CTarget> target;
+	Ref<CHealth> healthComp;
 	Input input;
+	i32 dir = -1;
+
+	f32 xSpeed = 50.f;
+	f64 attackCooldownMax = 2.5;
 	f64 attackCooldown = 0;
+	f64 attackTime = 1.0;
+	f64 turnCooldownMax = 1.0;
+	f64 turnCooldown = 0;
 
 	ASkeleton();
 
 	void beginPlay() override;
 	void update(f64 delta) override;
+
+	virtual void attack();
 };
 
 

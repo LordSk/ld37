@@ -1,6 +1,7 @@
 #include "ld37.h"
 #include "ordinator.h"
 #include <lsk/lsk_console.h>
+#include <engine/timer.h>
 
 #define SKELETON_AGGRO_RANGE 180.f
 
@@ -31,46 +32,115 @@ void Actor::endPlay()
 }
 
 
+void DamageFieldManager::init()
+{
+	fields.init(32);
+}
+
+void DamageFieldManager::destroy()
+{
+	fields.destroy();
+}
+
+void DamageFieldManager::update(f64 delta)
+{
+	for(i32 i = 0; i < fields.count(); ++i) {
+		fields[i].lifetime -= delta;
+		if(fields[i].lifetime <= 0) {
+			fields.remove(i);
+		}
+	}
+}
+
+void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup, f64 lifetime,
+					   const lsk_Vec2& sourcePos)
+{
+	DamageField field;
+	field.box.min = pos;
+	field.box.max = pos + size;
+	field.dmgGroup = dmgGroup;
+	field.lifetime = lifetime;
+	field.sourcePos = sourcePos;
+	DamageFieldManager::get().fields.push(field);
+}
+
+void CHealth::takeDamage(const DamageField& source)
+{
+	if(dmgCooldown <= 0.0) {
+		--health;
+		dmgCooldown = dmgCooldownMax;
+		lastDamageTime = Timers.getTime();
+		lastSource = source;
+	}
+}
+
+void CHealth::update(f64 delta)
+{
+	dmgCooldown -= delta;
+
+	for(const auto& field: DamageFieldManager::get().fields) {
+		if(field.dmgGroup != dmgGroup && intersectTest(body->box, field.box, nullptr)) {
+			takeDamage(field);
+		}
+	}
+}
+
 APlayer::APlayer()
 {
-
+	healthComp = Ord.make_CHealth();
+	healthComp->dmgGroup = DamageGroup::PLAYER;
 }
 
 void APlayer::beginPlay()
 {
 	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
+	healthComp->body = body;
 }
 
 void APlayer::update(f64 delta)
 {
 	Actor::update(delta);
 
-	f32 xSpeed = 75.f;
-	f32 jumpSpeed = 220.f;
-
-	if(input.x == 1) {
-		body->vel.x = xSpeed;
-	}
-	else if(input.x == -1) {
-		body->vel.x = -xSpeed;
-	}
-	else {
-		body->vel.x = 0;
-	}
-
-	if(input.jump && !prevInput.jump) {
-		bool canJump = false;
-		if(isGrounded()) {
-			canJump = true;
-			doubleJumps = 1;
-		}
-		else if(doubleJumps > 0) {
-			--doubleJumps;
-			canJump = true;
+	bool stunned = false;
+	if(healthComp->lastDamageTime != 0 && Timers.getTime() - healthComp->lastDamageTime < 0.15) {
+		f32 dir = 1;
+		if(healthComp->lastSource.sourcePos.x - transform->position.x > 0) {
+			dir = -1;
 		}
 
-		if(canJump) {
-			body->vel.y = -jumpSpeed;
+		body->vel.x = dir * 200.f;
+		body->vel.y = -100.f;
+		stunned = true;
+	}
+
+	if(!stunned) {
+		f32 xSpeed = 75.f;
+		f32 jumpSpeed = 220.f;
+
+		if(input.x == 1) {
+			body->vel.x = xSpeed;
+		}
+		else if(input.x == -1) {
+			body->vel.x = -xSpeed;
+		}
+		else {
+			body->vel.x = 0;
+		}
+
+		if(input.jump && !prevInput.jump) {
+			bool canJump = false;
+			if(isGrounded()) {
+				canJump = true;
+				doubleJumps = 1;
+			}
+			else if(doubleJumps > 0) {
+				--doubleJumps;
+				canJump = true;
+			}
+
+			if(canJump) {
+				body->vel.y = -jumpSpeed;
+			}
 		}
 	}
 
@@ -82,22 +152,17 @@ bool APlayer::isGrounded() const
 	return body->intersecting && body->vel.y >= 0 && body->y_locked;
 }
 
-void APlayer::takeDamage()
-{
-	--health;
-	if(health <= 0) {
-		// TODO: dead
-	}
-}
-
 ASkeleton::ASkeleton()
 {
 	target = Ord.make_CTarget();
+	healthComp = Ord.make_CHealth();
+	healthComp->dmgGroup = DamageGroup::ENEMY;
 }
 
 void ASkeleton::beginPlay()
 {
 	body = Physics.bodiesDynamic.push(BodyRectAligned(14, 36));
+	healthComp->body = body;
 }
 
 void ASkeleton::update(f64 delta)
@@ -105,6 +170,7 @@ void ASkeleton::update(f64 delta)
 	Actor::update(delta);
 
 	input = {};
+	attackCooldown -= delta;
 
 	// attack !
 	f32 targetXDelta = target->pos.x - transform->position.x;
@@ -116,30 +182,62 @@ void ASkeleton::update(f64 delta)
 		}
 	}
 
-	f32 xSpeed = 50.f;
+	bool canAdvance = dir == input.x;
+	if(input.x != 0 && input.x != dir) {
+		turnCooldown -= delta;
+		if(turnCooldown < 0.0) {
+			canAdvance = true;
+		}
+	}
+
+	if(attackCooldown > attackCooldownMax - 1.0) {
+		canAdvance = false;
+	}
 
 	if(input.x == 1) {
-		body->vel.x = xSpeed;
+		if(canAdvance) {
+			body->vel.x = xSpeed;
+			dir = 1;
+			turnCooldown = turnCooldownMax;
+		}
 	}
 	else if(input.x == -1) {
-		body->vel.x = -xSpeed;
+		if(canAdvance) {
+			body->vel.x = -xSpeed;
+			dir = -1;
+			turnCooldown = turnCooldownMax;
+		}
 	}
 	else {
 		body->vel.x = 0;
 	}
 
-	attackCooldown -= delta;
 	if(input.attack && attackCooldown <= 0.0) {
-		body->vel.x = 0;
 		lsk_printf("SMACK!");
-		attackCooldown = 2.5;
+		attackCooldown = attackCooldownMax;
+		attack();
 	}
+}
+
+void ASkeleton::attack()
+{
+	// play attack animation
+	Timers.add(0.25, [&]{
+		f32 xOffset = 14.f;
+		if(dir == -1) xOffset = -20.f;
+		lsk_Vec2 pos = {transform->position.x, transform->position.y};
+		pos.x += xOffset;
+
+		damageFieldCreate(pos, {20, 20}, healthComp->dmgGroup, 0.5,
+			{transform->position.x, transform->position.y});
+	});
 }
 
 bool LD37_Window::postInit()
 {
 	Ord.init();
 	Physics.init();
+	DamageFieldManager::get().init();
 
 	Renderer.viewResize(320, 180);
 
@@ -209,14 +307,16 @@ bool LD37_Window::postInit()
 
 void LD37_Window::preExit()
 {
-	assets.deinit();
 	Ord.destroy();
+	DamageFieldManager::get().destroy();
 	Physics.destroy();
+	assets.deinit();
 }
 
 void LD37_Window::update(f64 delta)
 {
 	IGameWindow::update(delta);
+	DamageFieldManager::get().update(delta);
 	Ord.update(delta);
 	Physics.update(delta);
 
@@ -232,6 +332,10 @@ void LD37_Window::update(f64 delta)
 	for(const auto& statBody: Physics.bodiesStatic) {
 		Renderer.queueSprite(H("body_static.material"), 1000, statBody.box.min,
 							 statBody.box.max - statBody.box.min);
+	}
+	for(const auto& field: DamageFieldManager::get().fields) {
+		Renderer.queueSprite(H("body_static.material"), 1000, field.box.min,
+							 field.box.max - field.box.min);
 	}
 #endif
 
