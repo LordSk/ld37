@@ -152,6 +152,6 @@ void PhysicsManager::update(f64 delta)
 			}
 		}
 
-		lsk_printf("step=%d", step);
+		//lsk_printf("step=%d", step);
 	}
 }

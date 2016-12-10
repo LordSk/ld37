@@ -1,0 +1,28 @@
+LD37: One Room
+
+One simple tiledmap
+Several enemies, one boss
+Skeleton-type enemies
+Boss is a flying snake skeleton
+	with stones spread evenly on its body
+	each stone destroyed = dead boss
+	main stone on its head. When the head stone is glowing, other stones are locked
+	-> focus head for a bit, destroy body stones, head re-locks, repeat.
+
+Death == loosing == winning
+When dying or winning (boss dead), main character falls asleep and immediatly wakes up
+In the same room, like waking up from a dream.
+
+Randomize enemy spawns, give player another weapon ?
+
+
+
+3 Skeleton enemies:
+	normal with a sword
+	normal with a bow
+	big one with a shield
+	
+
+Player health: 2
+Each hit is one health
+Heal before boss? Drink "Wake up chalice" to heal -> summons boss

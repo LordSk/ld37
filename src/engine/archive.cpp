@@ -16,6 +16,7 @@ void Archive::init()
 void Archive::deinit()
 {
 	fileList.destroy();
+	fileStrMap.destroy();
 }
 
 inline void pack_u16(u8** buffer, u16 data)

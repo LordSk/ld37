@@ -1,2 +1,6 @@
 /make.bat
 /build
+/introspector_debug.exe
+/assets/*.exe
+/assets/*.dll
+/assets/*.psd

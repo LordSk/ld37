@@ -8,18 +8,40 @@ bool LD37_Window::postInit()
 {
 	Ord.init();
 	Physics.init();
+
+	Renderer.viewResize(320, 180);
+
+	assets.init();
+	if(!assets.open("../assets/assets.lsk_arch")) {
+		return false;
+	}
+
+	assets.loadData();
+
+	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
+	if(!gamemap.load((const char*)mapFile.buffer.ptr)) {
+		return false;
+	}
+
+	gamemap.initForDrawing();
+
 	return true;
 }
 
 void LD37_Window::preExit()
 {
+	assets.deinit();
 	Physics.destroy();
 	Ord.destroy();
 }
 
 void LD37_Window::update(f64 delta)
 {
+	IGameWindow::update(delta);
+	Ord.update(delta);
+	Physics.update(delta);
 
+	gamemap.draw();
 }
 
 void LD37_Window::render()
