@@ -18,7 +18,7 @@ struct BodyRectAligned
 	}
 
 	BodyRectAligned(f32 sizeX, f32 sizeY) {
-		box.min	= {};
+		box.min	= {0, 0};
 		box.max = {sizeX, sizeY};
 	}
 };

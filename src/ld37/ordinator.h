@@ -1,6 +1,7 @@
 #pragma once
 #include <lsk/lsk_array.h>
 #include "C:\Prog\Projects\ld37\src\engine/base_entity.h"
+#include "C:\Prog\Projects\ld37\src\ld37/ld37.h"
 
 
 struct Ordinator
@@ -10,6 +11,13 @@ struct Ordinator
 	lsk_DSparseArray<Sprite> _comp_Sprite;
 	Ref<Sprite> make_Sprite();
 
+	lsk_DSparseArray<Actor> _entity_Actor;
+	Ref<Actor> spawn_Actor();
+	void destroy_Actor(Actor& ent);
+	inline void destroy_Actor(Ref<Actor>& ref) {
+		destroy_Actor(ref.get());
+		ref.clear();
+	}
 
 	void init();
 	void update(f64 delta);

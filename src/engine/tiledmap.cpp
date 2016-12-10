@@ -196,11 +196,13 @@ void TiledMap::draw()
 				cmd.modelMatrix = lsk_Mat4Translate({(f32)x * tileWidth, (f32)y * tileHeight, 0}) *
 						lsk_Mat4Scale({(f32)tileWidth, (f32)tileHeight, 0});
 				cmd.vao = Renderer._quadVao;
-				cmd.z = z++;
+				cmd.z = z;
 				cmd._materialType = MaterialType::TEXTURED;
 				cmd._pMaterialData = matData + gid;
 				Renderer.queue(cmd);
 			}
 		}
+
+		z += 10;
 	}
 }
