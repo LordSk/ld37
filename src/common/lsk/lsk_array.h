@@ -706,6 +706,11 @@ struct Ref
 		return &_from->get(_id);
 	}
 
+	inline const T* operator->() const {
+		assert(_from);
+		return &_from->get(_id);
+	}
+
 	inline void clear() {
 		_id = 0;
 		_from = nullptr;

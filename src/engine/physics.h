@@ -6,8 +6,9 @@ struct BodyRectAligned
 {
 	lsk_AABB2 box;
 	lsk_Vec2 vel = {};
-	u16 x_locked = false;
-	u16 y_locked = false;
+	u8 x_locked = false;
+	u8 y_locked = false;
+	u8 intersecting = false;
 	i32 group = 0;
 	void* pUserData = nullptr;
 

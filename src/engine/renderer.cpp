@@ -406,7 +406,7 @@ void RendererSingle::viewResize(i32 width, i32 height, f32 zoom)
 
 void RendererSingle::viewSetPos(f32 x, f32 y)
 {
-	_viewPosMatrix = lsk_Mat4Translate({x, y, 0});
+	_viewPosMatrix = lsk_Mat4Translate({-x, -y, 0});
 }
 
 void RendererSingle::beginFrame()

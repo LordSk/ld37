@@ -51,6 +51,7 @@ void PhysicsManager::update(f64 delta)
 		body.vel += gravity;
 		body.box.min += body.vel * delta;
 		body.box.max += body.vel * delta;
+		body.intersecting = false;
 	}
 
 	lsk_DArray<CollisionInfo> collisions(64);
@@ -70,6 +71,8 @@ void PhysicsManager::update(f64 delta)
 				lsk_Vec2 pushVec;
 
 				if(intersectTest(bodyA.box, bodyB.box, &pushVec)) {
+					bodyA.intersecting = true;
+
 					CollisionInfo coll;
 					coll.pBodyA = &bodyA;
 					coll.pBodyB = &bodyB;
@@ -88,6 +91,9 @@ void PhysicsManager::update(f64 delta)
 				lsk_Vec2 pushVec;
 
 				if(intersectTest(bodyA.box, bodyB.box, &pushVec)) {
+					bodyA.intersecting = true;
+					bodyB.intersecting = true;
+
 					CollisionInfo coll;
 					coll.pBodyA = &bodyA;
 					coll.pBodyB = &bodyB;

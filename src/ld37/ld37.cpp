@@ -12,6 +12,8 @@ void Actor::initBody(lsk_Vec2 pos, lsk_Vec2 size)
 {
 	body = Physics.bodiesDynamic.push(BodyRectAligned(size.x, size.y));
 	body->setPos(pos);
+	transform->position.x = pos.x;
+	transform->position.y = pos.y;
 }
 
 void Actor::update(f64 delta)
@@ -19,7 +21,6 @@ void Actor::update(f64 delta)
 	assert(body.valid());
 	transform->position.x = body->box.min.x;
 	transform->position.y = body->box.min.y;
-	//lsk_printf("%.1f %.1f", body->box.min.x, body->box.min.y);
 }
 
 void Actor::endPlay()
@@ -28,6 +29,57 @@ void Actor::endPlay()
 	Physics.bodiesDynamic.remove(body);
 }
 
+
+APlayer::APlayer()
+{
+
+}
+
+void APlayer::beginPlay()
+{
+	initBody({50, 20}, {14, 36});
+}
+
+void APlayer::update(f64 delta)
+{
+	Actor::update(delta);
+
+	f32 xSpeed = 75.f;
+	f32 jumpSpeed = 220.f;
+
+	if(input.x == 1) {
+		body->vel.x = xSpeed;
+	}
+	else if(input.x == -1) {
+		body->vel.x = -xSpeed;
+	}
+	else {
+		body->vel.x = 0;
+	}
+
+	if(input.jump && !prevInput.jump) {
+		bool canJump = false;
+		if(isGrounded()) {
+			canJump = true;
+			doubleJumps = 1;
+		}
+		else if(doubleJumps > 0) {
+			--doubleJumps;
+			canJump = true;
+		}
+
+		if(canJump) {
+			body->vel.y = -jumpSpeed;
+		}
+	}
+
+	prevInput = input;
+}
+
+bool APlayer::isGrounded() const
+{
+	return body->intersecting && body->vel.y >= 0 && body->y_locked;
+}
 
 bool LD37_Window::postInit()
 {
@@ -82,8 +134,8 @@ bool LD37_Window::postInit()
 	}
 
 
-	auto actor = Ord.spawn_Actor();
-	actor->initBody({50, 20}, {14, 42});
+	player = Ord.spawn_APlayer();
+	player->beginPlay();
 
 	return true;
 }
@@ -101,9 +153,11 @@ void LD37_Window::update(f64 delta)
 	Ord.update(delta);
 	Physics.update(delta);
 
+	Renderer.viewSetPos(player->body->box.min.x - 50, 0);
+
 	gamemap.draw();
 
-
+#ifdef CONF_DEBUG
 	for(const auto& dynBody: Physics.bodiesDynamic) {
 		Renderer.queueSprite(H("body_dynamic.material"), 1000, dynBody.box.min,
 							 dynBody.box.max - dynBody.box.min);
@@ -112,12 +166,58 @@ void LD37_Window::update(f64 delta)
 		Renderer.queueSprite(H("body_static.material"), 1000, statBody.box.min,
 							 statBody.box.max - statBody.box.min);
 	}
+#endif
 }
 
 void LD37_Window::render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	IGameWindow::render();
+}
+
+bool LD37_Window::handleEvent(SDL_Event event)
+{
+	if(!IGameWindow::handleEvent(event)) {
+		return false;
+	}
+
+	if(event.type == SDL_KEYDOWN) {
+		if(event.key.keysym.sym == SDLK_d) {
+			player->input.x = 1;
+			return true;
+		}
+		if(event.key.keysym.sym == SDLK_q ||
+		   event.key.keysym.sym == SDLK_a) {
+			player->input.x = -1;
+			return true;
+		}
+		if(event.key.keysym.sym == SDLK_SPACE) {
+			player->input.jump = 1;
+			return true;
+		}
+	}
+
+	if(event.type == SDL_KEYUP) {
+		if(event.key.keysym.sym == SDLK_d) {
+			if(player->input.x == 1) {
+				player->input.x = 0;
+			}
+			return true;
+		}
+		if(event.key.keysym.sym == SDLK_q ||
+		   event.key.keysym.sym == SDLK_a) {
+			if(player->input.x == -1) {
+				player->input.x = 0;
+			}
+			return true;
+		}
+		if(event.key.keysym.sym == SDLK_SPACE) {
+			player->input.jump = 0;
+			return true;
+		}
+	}
+
+	return true;
 }
 
 #ifdef _WIN32

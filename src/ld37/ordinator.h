@@ -18,6 +18,13 @@ struct Ordinator
 		destroy_Actor(ref.get());
 		ref.clear();
 	}
+	lsk_DSparseArray<APlayer> _entity_APlayer;
+	Ref<APlayer> spawn_APlayer();
+	void destroy_APlayer(APlayer& ent);
+	inline void destroy_APlayer(Ref<APlayer>& ref) {
+		destroy_APlayer(ref.get());
+		ref.clear();
+	}
 
 	void init();
 	void update(f64 delta);
