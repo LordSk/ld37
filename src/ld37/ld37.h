@@ -87,6 +87,7 @@ struct ENTITY APlayer: Actor
 	Ref<CHealth> healthComp;
 	Input prevInput;
 	Input input;
+	i32 dir = 0;
 	i32 doubleJumps = 0;
 
 	APlayer();

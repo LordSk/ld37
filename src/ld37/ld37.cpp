@@ -7,6 +7,9 @@
 #define SKELETON_AGGRO_RANGE 180.f
 #define GLOBAL_VOLUME 0.5
 
+#define EXPLORER_IDLE_SIZEX 14
+#define EXPLORER_RUNNING_SIZEX 26
+
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
 	BODYGROUP_SKELETON,
@@ -121,16 +124,29 @@ void APlayer::update(f64 delta)
 
 		if(input.x == 1) {
 			bodyComp->body->vel.x = xSpeed;
-			sprite->localPos = {};
-			sprite->size.x = 14;
+			sprite->materialName = H("explorer_running.material");
+			sprite->localPos.x = -8;
+			sprite->size.x = EXPLORER_RUNNING_SIZEX;
+			dir = 1;
 		}
 		else if(input.x == -1) {
 			bodyComp->body->vel.x = -xSpeed;
-			sprite->size.x = -14;
-			sprite->localPos.x = 14;
+			sprite->materialName = H("explorer_running.material");
+			sprite->localPos.x = EXPLORER_RUNNING_SIZEX - 4;
+			sprite->size.x = -EXPLORER_RUNNING_SIZEX;
+			dir = -1;
 		}
 		else {
 			bodyComp->body->vel.x = 0;
+			sprite->materialName = H("explorer_idle.material");
+			if(dir == 1) {
+				sprite->localPos.x = 0;
+				sprite->size.x = EXPLORER_IDLE_SIZEX;
+			}
+			else {
+				sprite->localPos.x = EXPLORER_IDLE_SIZEX;
+				sprite->size.x = -EXPLORER_IDLE_SIZEX;
+			}
 		}
 
 		if(input.jump && !prevInput.jump) {
@@ -387,6 +403,10 @@ bool LD37_Window::postInit()
 	MaterialAnimation anim;
 	anim.pMat = &Renderer.materials.getTextured(H("explorer_idle.material"));
 	anim.speed = 0.75f;
+	matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_running.material"));
+	anim.speed = 0.15f;
 	matAnims.push(anim);
 
 	return true;
