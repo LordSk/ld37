@@ -13,6 +13,7 @@
 #define EXPLORER_PUNCH_SIZEX 24
 
 #define SKELETON_IDLE_SIZEX 20
+#define SKELETON_RUNNING_SIZEX 33
 
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
@@ -306,7 +307,7 @@ void ASkeleton::update(f64 delta)
 		}
 	}
 
-	bool canAdvance = dir == input.x;
+	canAdvance = dir == input.x;
 	if(input.x != 0 && input.x != dir) {
 		turnCooldown -= delta;
 		if(turnCooldown < 0.0) {
@@ -323,6 +324,10 @@ void ASkeleton::update(f64 delta)
 			bodyComp->body->vel.x = xSpeed;
 			dir = 1;
 			turnCooldown = turnCooldownMax;
+
+			sprite->materialName = H("skeleton_running.material");
+			sprite->localPos.x = -9;
+			sprite->size.x = SKELETON_RUNNING_SIZEX;
 		}
 	}
 	else if(input.x == -1) {
@@ -330,6 +335,10 @@ void ASkeleton::update(f64 delta)
 			bodyComp->body->vel.x = -xSpeed;
 			dir = -1;
 			turnCooldown = turnCooldownMax;
+
+			sprite->materialName = H("skeleton_running.material");
+			sprite->localPos.x = SKELETON_RUNNING_SIZEX - 12;
+			sprite->size.x = -SKELETON_RUNNING_SIZEX;
 		}
 	}
 	else {
@@ -476,6 +485,10 @@ bool LD37_Window::postInit()
 
 	anim.pMat = &Renderer.materials.getTextured(H("skeleton_idle.material"));
 	anim.frameTime = 0.75f;
+	matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("skeleton_running.material"));
+	anim.frameTime = 0.15f;
 	matAnims.push(anim);
 
 	// load tiledmap

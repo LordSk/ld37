@@ -140,6 +140,8 @@ struct ENTITY ASkeleton: Actor
 	f32 knockbackMultiplier = 1.f;
 	f64 knockbackCD = 0;
 
+	bool canAdvance = true;
+
 	ASkeleton();
 
 	void beginPlay() override;
