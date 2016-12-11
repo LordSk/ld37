@@ -27,6 +27,7 @@ struct ENTITY Actor: IEntityBase
 
 enum class DamageGroup: i32 {
 	INVALID = 0,
+	NEUTRAL,
 	PLAYER,
 	ENEMY
 };
@@ -51,7 +52,7 @@ struct DamageFieldManager
 	void update(f64 delta);
 };
 
-void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup, f64 lifetime,
+void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup,
 					   const lsk_Vec2& sourcePos);
 
 struct COMPONENT CHealth
@@ -60,7 +61,7 @@ struct COMPONENT CHealth
 	i32 maxHealth = 2;
 	i32 health = maxHealth;
 	DamageGroup dmgGroup = DamageGroup::INVALID;
-	f64 dmgCooldownMax = 0.25;
+	f64 dmgCooldownMax = 0.3;
 	f64 dmgCooldown = 0.0;
 	f64 lastDamageTime = 0.0;
 	DamageField lastSource;
@@ -87,8 +88,12 @@ struct ENTITY APlayer: Actor
 	Ref<CHealth> healthComp;
 	Input prevInput;
 	Input input;
-	i32 dir = 0;
+	i32 dir = 1;
 	i32 doubleJumps = 0;
+
+	f64 attackCD = 0;
+	f64 attackCDMax = 0.5;
+	struct MaterialAnimation* pPunchAnim = nullptr;
 
 	APlayer();
 
@@ -97,6 +102,7 @@ struct ENTITY APlayer: Actor
 
 	bool canJump() const;
 	bool isGrounded() const;
+	void attack();
 };
 
 struct COMPONENT CTarget
@@ -124,11 +130,14 @@ struct ENTITY ASkeleton: Actor
 	f64 turnCooldownMax = 0.5;
 	f64 turnCooldown = 0;
 
-	f64 nextRandomGruntCD_min = 1.0;
-	f64 nextRandomGruntCD_max = 2.0;
+	f64 nextRandomGruntCD_min = 10.0;
+	f64 nextRandomGruntCD_max = 20.0;
 	f64 nextRandomGruntCD;
 	lsk_Array<u32, 3> sndGruntNameHashes;
 	lsk_Array<u32, 3> sndAttackNameHashes;
+
+	f32 knockbackMultiplier = 1.f;
+	f64 knockbackCD = 0;
 
 	ASkeleton();
 
@@ -149,7 +158,7 @@ struct MaterialAnimation
 {
 	Shader_Textured::Material* pMat;
 	f64 _time;
-	f32 speed;
+	f32 frameTime;
 	i32 paused = false;
 
 	void update(f64 delta);

@@ -4,11 +4,12 @@
 #include <engine/timer.h>
 #include <engine/audio.h>
 
-#define SKELETON_AGGRO_RANGE 180.f
+#define SKELETON_AGGRO_RANGE 220.f
 #define GLOBAL_VOLUME 0.5
 
 #define EXPLORER_IDLE_SIZEX 14
 #define EXPLORER_RUNNING_SIZEX 26
+#define EXPLORER_PUNCH_SIZEX 24
 
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
@@ -52,14 +53,14 @@ void DamageFieldManager::update(f64 delta)
 	}
 }
 
-void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup, f64 lifetime,
+void damageFieldCreate(const lsk_Vec2& pos, const lsk_Vec2& size, DamageGroup dmgGroup,
 					   const lsk_Vec2& sourcePos)
 {
 	DamageField field;
 	field.box.min = pos;
 	field.box.max = pos + size;
 	field.dmgGroup = dmgGroup;
-	field.lifetime = lifetime;
+	field.lifetime = 0.1;
 	field.sourcePos = sourcePos;
 	DamageFieldManager::get().fields.push(field);
 }
@@ -71,6 +72,13 @@ void CHealth::takeDamage(const DamageField& source)
 		dmgCooldown = dmgCooldownMax;
 		lastDamageTime = Timers.getTime();
 		lastSource = source;
+
+		if(source.dmgGroup == DamageGroup::ENEMY) {
+			AudioGet.play(H("enemy_hit.ogg"));
+		}
+		else {
+			AudioGet.play(H("punch_hit.ogg"));
+		}
 	}
 }
 
@@ -104,6 +112,8 @@ void APlayer::beginPlay()
 void APlayer::update(f64 delta)
 {
 	Actor::update(delta);
+
+	attackCD -= delta;
 
 	// knockback from damage
 	bool stunned = false;
@@ -164,6 +174,24 @@ void APlayer::update(f64 delta)
 				bodyComp->body->vel.y = -jumpSpeed;
 			}
 		}
+
+		if(input.attack && attackCD <= 0.0) {
+			attack();
+			pPunchAnim->reset();
+			attackCD = attackCDMax;
+		}
+	}
+
+	if(attackCD > attackCDMax - 0.25) {
+		sprite->materialName = H("explorer_punch.material");
+		if(dir == 1) {
+			sprite->localPos.x = 0;
+			sprite->size.x = EXPLORER_PUNCH_SIZEX;
+		}
+		else {
+			sprite->localPos.x = EXPLORER_PUNCH_SIZEX;
+			sprite->size.x = -EXPLORER_PUNCH_SIZEX;
+		}
 	}
 
 	prevInput = input;
@@ -172,6 +200,17 @@ void APlayer::update(f64 delta)
 bool APlayer::isGrounded() const
 {
 	return bodyComp->body->intersecting && bodyComp->body->vel.y >= 0 && bodyComp->body->y_locked;
+}
+
+void APlayer::attack()
+{
+	lsk_Vec2 pos = {transform->position.x, transform->position.y};
+	f32 xOffset = 4.f;
+	if(dir == -1) xOffset = -20.f;
+	lsk_Vec2 fieldPos = pos;
+	fieldPos.x += xOffset;
+
+	damageFieldCreate(fieldPos, {30, 30}, DamageGroup::PLAYER, pos);
 }
 
 ASkeleton::ASkeleton()
@@ -206,6 +245,29 @@ void ASkeleton::update(f64 delta)
 	input = {};
 	attackAnimCooldown -= delta;
 	nextRandomGruntCD -= delta;
+	knockbackCD -= delta;
+
+	// knockback from damage
+	if(healthComp->lastDamageTime != 0 && Timers.getTime() - healthComp->lastDamageTime < 0.15 &&
+	   knockbackCD <= 0.0) {
+		knockbackCD = 0.5;
+
+		f32 dir = 1;
+		if(healthComp->lastSource.sourcePos.x - transform->position.x > 0) {
+			dir = -1;
+		}
+
+		bodyComp->body->vel.x = dir * 180.f * knockbackMultiplier;
+		bodyComp->body->vel.y = -100.f * knockbackMultiplier;
+	}
+
+	if(knockbackCD > 0) {
+		bodyComp->body->vel.x *= 0.9;
+		if(lsk_abs(bodyComp->body->vel.x) < 10.f) {
+			bodyComp->body->vel.x = 0;
+		}
+		return;
+	}
 
 	if(nextRandomGruntCD <= 0.0 && attackAnimCooldown <= 0) {
 		nextRandomGruntCD = nextRandomGruntCD_min +
@@ -279,7 +341,7 @@ void ASkeleton::attack()
 	lsk_Vec2 fieldPos = pos;
 	fieldPos.x += xOffset;
 
-	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, 0.2, pos);
+	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, pos);
 }
 
 ASkeletonBigShield::ASkeletonBigShield()
@@ -293,6 +355,8 @@ ASkeletonBigShield::ASkeletonBigShield()
 	turnCooldownMax = 1.0;
 	attackRange = 30;
 	attackTimeMax = 1.0;
+
+	knockbackMultiplier = 0.5;
 
 	sndGruntNameHashes.clear();
 	sndGruntNameHashes.push(H("snd_skeleton_big_grunt1.ogg"));
@@ -313,7 +377,7 @@ void ASkeletonBigShield::attack()
 	lsk_Vec2 fieldPos = pos;
 	fieldPos.x += xOffset;
 
-	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, 0.2, pos);
+	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, pos);
 }
 
 void MaterialAnimation::update(f64 delta)
@@ -321,7 +385,7 @@ void MaterialAnimation::update(f64 delta)
 	if(paused) return;
 	_time += delta;
 	i32 frameCount = 1.f / pMat->uvParams.z;
-	i32 curFrame = (i32)(_time / speed) % frameCount;
+	i32 curFrame = (i32)(_time / frameTime) % frameCount;
 	pMat->uvParams.x = curFrame;
 }
 
@@ -343,6 +407,23 @@ bool LD37_Window::postInit()
 
 	assets.loadData();
 
+	// material animations
+	matAnims.init(80);
+
+	MaterialAnimation anim;
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_idle.material"));
+	anim.frameTime = 0.75f;
+	matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_running.material"));
+	anim.frameTime = 0.15f;
+	matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_punch.material"));
+	anim.frameTime = 0.125f;
+	MaterialAnimation* pPunchAnim = &matAnims.push(anim);
+
+	// load tiledmap
 	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
 	if(!gamemap.load((const char*)mapFile.buffer.ptr)) {
 		return false;
@@ -383,6 +464,7 @@ bool LD37_Window::postInit()
 
 	player = Ord.spawn_APlayer();
 	player->beginPlay();
+	player->pPunchAnim = pPunchAnim;
 
 	for(const auto& layer: gamemap.objectLayers) {
 		for(const auto& obj: layer.objects) {
@@ -390,24 +472,12 @@ bool LD37_Window::postInit()
 				player->setPos({(f32)obj.x, (f32)obj.y});
 			}
 			else if(H(obj.type.c_str()) == H("skeleton_spawn")) {
-				auto skeleton = Ord.spawn_ASkeletonBigShield();
+				auto skeleton = Ord.spawn_ASkeleton();
 				skeleton->beginPlay();
 				skeleton->setPos({(f32)obj.x, (f32)obj.y});
 			}
 		}
 	}
-
-	// material animations
-	matAnims.init(32);
-
-	MaterialAnimation anim;
-	anim.pMat = &Renderer.materials.getTextured(H("explorer_idle.material"));
-	anim.speed = 0.75f;
-	matAnims.push(anim);
-
-	anim.pMat = &Renderer.materials.getTextured(H("explorer_running.material"));
-	anim.speed = 0.15f;
-	matAnims.push(anim);
 
 	return true;
 }
@@ -480,8 +550,14 @@ bool LD37_Window::handleEvent(SDL_Event event)
 			player->input.x = -1;
 			return true;
 		}
-		if(event.key.keysym.sym == SDLK_SPACE) {
+		if(event.key.keysym.sym == SDLK_SPACE ||
+		   event.key.keysym.sym == SDLK_w ||
+		   event.key.keysym.sym == SDLK_z) {
 			player->input.jump = 1;
+			return true;
+		}
+		if(event.key.keysym.sym == SDLK_f) {
+			player->input.attack = 1;
 			return true;
 		}
 	}
@@ -500,10 +576,18 @@ bool LD37_Window::handleEvent(SDL_Event event)
 			}
 			return true;
 		}
-		if(event.key.keysym.sym == SDLK_SPACE) {
+		if(event.key.keysym.sym == SDLK_SPACE ||
+		   event.key.keysym.sym == SDLK_w ||
+		   event.key.keysym.sym == SDLK_z) {
 			player->input.jump = 0;
 			return true;
 		}
+		if(event.key.keysym.sym == SDLK_f) {
+			player->input.attack = 0;
+			return true;
+		}
+
+
 
 		if(event.key.keysym.sym == SDLK_c) {
 			debugCollisions ^= 1;
