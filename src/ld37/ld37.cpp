@@ -17,8 +17,8 @@
 #define SKELETON_ATTACK_SIZEX 45
 
 #define SKELETON_BIG_IDLE_SIZEX 27
-#define SKELETON_RUNNING_SIZEX 27
-#define SKELETON_ATTACK_SIZEX 45
+#define SKELETON_BIG_RUNNING_SIZEX 27
+#define SKELETON_BIG_ATTACK_SIZEX 33
 
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
@@ -497,11 +497,24 @@ void ASkeletonBigShield::playRun()
 	sprite->materialName = H("skeleton_big_running.material");
 	if(dir == 1) {
 		sprite->localPos.x = 0;
-		sprite->size.x = SKELETON_RUNNING_SIZEX;
+		sprite->size.x = SKELETON_BIG_RUNNING_SIZEX;
 	}
 	else {
-		sprite->localPos.x = SKELETON_RUNNING_SIZEX - 6;
-		sprite->size.x = -SKELETON_RUNNING_SIZEX;
+		sprite->localPos.x = SKELETON_BIG_RUNNING_SIZEX - 6;
+		sprite->size.x = -SKELETON_BIG_RUNNING_SIZEX;
+	}
+}
+
+void ASkeletonBigShield::playAttack()
+{
+	sprite->materialName = H("skeleton_big_attack.material");
+	if(dir == 1) {
+		sprite->localPos.x = 0;
+		sprite->size.x = SKELETON_BIG_ATTACK_SIZEX;
+	}
+	else {
+		sprite->localPos.x = SKELETON_BIG_ATTACK_SIZEX - 12;
+		sprite->size.x = -SKELETON_BIG_ATTACK_SIZEX;
 	}
 }
 

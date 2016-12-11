@@ -163,7 +163,7 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 	void die() override;
 	void playIdle() override;
 	void playRun();
-	//void playAttack();
+	void playAttack();
 };
 
 struct MaterialAnimation
