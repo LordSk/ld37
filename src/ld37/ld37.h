@@ -144,6 +144,16 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 	void attack() override;
 };
 
+struct MaterialAnimation
+{
+	Shader_Textured::Material* pMat;
+	f64 _time;
+	f32 speed;
+	i32 paused = false;
+
+	void update(f64 delta);
+	inline void reset() { _time = 0; }
+};
 
 struct LD37_Window: IGameWindow
 {
@@ -151,6 +161,7 @@ struct LD37_Window: IGameWindow
 	TiledMap gamemap;
 	Ref<APlayer> player;
 	bool debugCollisions = true;
+	lsk_DArray<MaterialAnimation> matAnims;
 
 	bool postInit() override;
 	void preExit() override;

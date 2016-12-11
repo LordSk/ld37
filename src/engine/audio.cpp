@@ -19,16 +19,16 @@ void AudioManager::destroy()
 	_soloud.deinit();
 }
 
-void AudioManager::play(u32 soundNameHash)
+void AudioManager::play(u32 soundNameHash, f32 volume)
 {
 	assert(_soundStrMap.geth(soundNameHash));
-	_playlist.push(*_soundStrMap.geth(soundNameHash));
+	_playlist.push({*_soundStrMap.geth(soundNameHash), volume});
 }
 
 void AudioManager::update()
 {
-	for(auto& wavRef: _playlist) {
-		_soloud.play(wavRef.get(), 1.0f);
+	for(auto& sndPlay: _playlist) {
+		_soloud.play(sndPlay.ref.get(), sndPlay.volume);
 	}
 
 	_playlist.clear();

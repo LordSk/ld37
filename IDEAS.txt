@@ -26,3 +26,5 @@ Randomize enemy spawns, give player another weapon ?
 Player health: 2
 Each hit is one health
 Heal before boss? Drink "Wake up chalice" to heal -> summons boss
+
+Traps??

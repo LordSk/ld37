@@ -5,6 +5,7 @@
 #include <engine/audio.h>
 
 #define SKELETON_AGGRO_RANGE 180.f
+#define GLOBAL_VOLUME 0.5
 
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
@@ -87,13 +88,13 @@ APlayer::APlayer()
 	healthComp->dmgGroup = DamageGroup::PLAYER;
 	sprite = Ord.make_Sprite();
 	sprite->transform = transform;
-	sprite->materialName = H("explorer_still_right.material");
-	sprite->size = {16, 38};
+	sprite->materialName = H("explorer_idle.material");
+	sprite->size = {14, 38};
 }
 
 void APlayer::beginPlay()
 {
-	bodyComp->init({16, 38}, BODYGROUP_PLAYER);
+	bodyComp->init({14, 38}, BODYGROUP_PLAYER);
 	healthComp->body = bodyComp->body;
 }
 
@@ -120,11 +121,13 @@ void APlayer::update(f64 delta)
 
 		if(input.x == 1) {
 			bodyComp->body->vel.x = xSpeed;
-			sprite->materialName = H("explorer_still_right.material");
+			sprite->localPos = {};
+			sprite->size.x = 14;
 		}
 		else if(input.x == -1) {
 			bodyComp->body->vel.x = -xSpeed;
-			sprite->materialName = H("explorer_still_left.material");
+			sprite->size.x = -14;
+			sprite->localPos.x = 14;
 		}
 		else {
 			bodyComp->body->vel.x = 0;
@@ -191,7 +194,7 @@ void ASkeleton::update(f64 delta)
 	if(nextRandomGruntCD <= 0.0 && attackAnimCooldown <= 0) {
 		nextRandomGruntCD = nextRandomGruntCD_min +
 				lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
-		AudioGet.play(sndGruntNameHashes[lsk_rand() % sndGruntNameHashes.count()]);
+		AudioGet.play(sndGruntNameHashes[lsk_rand() % sndGruntNameHashes.count()], 0.5f);
 	}
 
 	// attack !
@@ -297,8 +300,20 @@ void ASkeletonBigShield::attack()
 	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, 0.2, pos);
 }
 
+void MaterialAnimation::update(f64 delta)
+{
+	if(paused) return;
+	_time += delta;
+	i32 frameCount = 1.f / pMat->uvParams.z;
+	i32 curFrame = (i32)(_time / speed) % frameCount;
+	pMat->uvParams.x = curFrame;
+}
+
 bool LD37_Window::postInit()
 {
+	glDisable(GL_CULL_FACE);
+
+	AudioGet._soloud.setGlobalVolume(GLOBAL_VOLUME);
 	Ord.init();
 	Physics.init();
 	DamageFieldManager::get().init();
@@ -366,6 +381,14 @@ bool LD37_Window::postInit()
 		}
 	}
 
+	// material animations
+	matAnims.init(32);
+
+	MaterialAnimation anim;
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_idle.material"));
+	anim.speed = 0.75f;
+	matAnims.push(anim);
+
 	return true;
 }
 
@@ -408,6 +431,10 @@ void LD37_Window::update(f64 delta)
 	for(auto& comp: Ord._comp_CTarget) {
 		comp.pos.x = player->transform->position.x;
 		comp.pos.y = player->transform->position.y;
+	}
+
+	for(auto& anim: matAnims) {
+		anim.update(delta);
 	}
 }
 

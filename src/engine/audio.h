@@ -13,12 +13,18 @@ struct AudioManager
 	// TODO: limit sound data memory space
 	lsk_DSparseArray<SoLoud::Wav> _soundData;
 	lsk_DStrHashMap<Ref<SoLoud::Wav>> _soundStrMap;
-	lsk_DArray<Ref<SoLoud::Wav>> _playlist;
+
+	struct SndPlay {
+		Ref<SoLoud::Wav> ref;
+		f32 volume;
+	};
+
+	lsk_DArray<SndPlay> _playlist;
 
 	bool init();
 	void destroy();
 
-	void play(u32 soundNameHash);
+	void play(u32 soundNameHash, f32 volume = 1.0f);
 	void update();
 
 	//bool loadFromDisk(const char* path, u32 soundNameHash);
