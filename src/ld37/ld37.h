@@ -162,8 +162,32 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 	void attack() override;
 	void die() override;
 	void playIdle() override;
-	void playRun();
-	void playAttack();
+	void playRun() override;
+	void playAttack() override;
+};
+
+struct ENTITY ADragon: IEntityBase
+{
+	const lsk_Array<lsk_Vec2, 16>* pDragonPath;
+	f32 damageCD = 0;
+	i32 curPathId = -1;
+	lsk_Vec2 pos;
+
+	struct Part {
+		i32 alive = true;
+		i32 pathId = 0;
+		lsk_Vec2 pos = {};
+		Ref<BodyRectAligned> body;
+	};
+	lsk_Array<Part, 8> parts;
+	Ref<BodyRectAligned> headBody;
+
+
+	ADragon();
+	void update(f64 delta) override;
+	void place(const lsk_Array<lsk_Vec2, 16>* pDragonPath_);
+	void endPlay() override;
+	bool isDead();
 };
 
 struct MaterialAnimation
@@ -206,6 +230,9 @@ struct LD37_Window: IGameWindow
 	};
 
 	i32 gamestate = GAMESTATE_PREGAME;
+
+	lsk_Array<lsk_Vec2, 16> dragonPath;
+	Ref<ADragon> dragon;
 
 	bool postInit() override;
 	void preExit() override;

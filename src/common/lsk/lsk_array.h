@@ -42,6 +42,7 @@ struct lsk_Array
 {
 	T _data[maxElementCount];
 	u32 _count = 0;
+	u32 _capacity = maxElementCount;
 
 	inline T& push(const T& element) {
 		assert(_count < maxElementCount);

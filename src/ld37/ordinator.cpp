@@ -100,6 +100,17 @@ void Ordinator::destroy_ASkeletonBigShield(ASkeletonBigShield& ent)
 	_entity_ASkeletonBigShield.remove(ent);
 }
 
+Ref<ADragon> Ordinator::spawn_ADragon()
+{
+	return _entity_ADragon.push(ADragon());
+}
+
+void Ordinator::destroy_ADragon(ADragon& ent)
+{
+	ent.endPlay();
+	_entity_ADragon.remove(ent);
+}
+
 void Ordinator::init()
 {
 	// TODO: determine starting capacities depending on the game
@@ -112,6 +123,7 @@ void Ordinator::init()
 	_entity_APlayer.init(32);
 	_entity_ASkeleton.init(32);
 	_entity_ASkeletonBigShield.init(32);
+	_entity_ADragon.init(32);
 }
 
 void Ordinator::update(f64 delta)
@@ -137,6 +149,12 @@ void Ordinator::update(f64 delta)
 	for(i32 i = 0; i < _entity_ASkeletonBigShield.count(); ++i) {
 		if(_entity_ASkeletonBigShield.data(i)._markedAsDestroy) {
 			destroy_ASkeletonBigShield(_entity_ASkeletonBigShield.data(i));
+			--i;
+		}
+	}
+	for(i32 i = 0; i < _entity_ADragon.count(); ++i) {
+		if(_entity_ADragon.data(i)._markedAsDestroy) {
+			destroy_ADragon(_entity_ADragon.data(i));
 			--i;
 		}
 	}
@@ -167,6 +185,9 @@ void Ordinator::update(f64 delta)
 		ent.update(delta);
 	}
 	for(auto& ent : _entity_ASkeletonBigShield) {
+		ent.update(delta);
+	}
+	for(auto& ent : _entity_ADragon) {
 		ent.update(delta);
 	}
 }
@@ -209,5 +230,9 @@ void Ordinator::destroy()
 		ent.endPlay();
 	}
 	_entity_ASkeletonBigShield.destroy();
+	for(auto& ent : _entity_ADragon) {
+		ent.endPlay();
+	}
+	_entity_ADragon.destroy();
 }
 

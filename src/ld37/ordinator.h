@@ -45,6 +45,13 @@ struct Ordinator
 		destroy_ASkeletonBigShield(ref.get());
 		ref.clear();
 	}
+	lsk_DSparseArray<ADragon> _entity_ADragon;
+	Ref<ADragon> spawn_ADragon();
+	void destroy_ADragon(ADragon& ent);
+	inline void destroy_ADragon(Ref<ADragon>& ref) {
+		destroy_ADragon(ref.get());
+		ref.clear();
+	}
 
 	void init();
 	void update(f64 delta);

@@ -527,6 +527,123 @@ void MaterialAnimation::update(f64 delta)
 	pMat->uvParams.x = curFrame;
 }
 
+
+ADragon::ADragon()
+{
+	curPathId = 0;
+	damageCD = 0;
+
+	for(i32 i = 0; i < parts._capacity; ++i) {
+		parts.push(Part());
+		parts[i].body = headBody = Physics.bodiesStatic.push(BodyRectAligned(28, 28));
+	}
+
+	headBody = Physics.bodiesStatic.push(BodyRectAligned(28, 28));
+}
+
+void ADragon::update(f64 delta)
+{
+	lsk_Vec2 targetPos = (*pDragonPath)[curPathId];
+	if(lsk_distance(targetPos, pos) < 2.f) {
+		++curPathId;
+		curPathId = curPathId%pDragonPath->count();
+		targetPos = (*pDragonPath)[curPathId];
+	}
+
+	f32 speed = 100.f;
+	lsk_Vec2 vel = lsk_normalize(targetPos-pos) * speed;
+	pos += vel * delta;
+	headBody->setPos(pos);
+
+	f32 angle = -atan2(vel.x, vel.y);
+	lsk_Quat rot = lsk_QuatAxisRotation({0,0,1}, angle + LSK_PI/2.f);
+	lsk_Vec2 origin = {49/2.f, 14.f};
+
+	lsk_Vec2 localPos = {14.f, 14.f};
+	if(lsk_abs(vel.x) > lsk_abs(vel.y)) {
+		localPos.x += lsk_sign(vel.x) * (49/2.f - 14.f);
+	}
+	if(lsk_abs(vel.y) > lsk_abs(vel.x)) {
+		localPos.y += lsk_sign(vel.y) * (49/2.f - 14.f);
+	}
+
+	damageFieldCreate(pos + localPos + lsk_Vec2{-16, -16}, {32, 32}, DamageGroup::ENEMY, pos + localPos);
+
+	i32 z = 200;
+	lsk_Mat4 modelMatrix = lsk_Mat4Translate(lsk_Vec3{pos + localPos, 0});
+	modelMatrix = modelMatrix * lsk_QuatMatrix(rot);
+	modelMatrix = modelMatrix * lsk_Mat4Translate(lsk_Vec3{-origin, 0});
+	modelMatrix = modelMatrix * lsk_Mat4Scale(lsk_Vec3{49, 28, 1});
+
+	DrawCommand cmd;
+	cmd.vao = Renderer._quadVao;
+	cmd.modelMatrix = modelMatrix;
+	cmd.z = z;
+	cmd.setMaterial(H("dragon_head.material"));
+	Renderer.queue(cmd);
+
+	damageCD -= delta;
+	bool noPartDamaged = true;
+
+	for(auto& p: parts) {
+		targetPos = (*pDragonPath)[p.pathId];
+		if(lsk_distance(targetPos, p.pos) < 2.f) {
+			p.pathId = (p.pathId + 1)%pDragonPath->count();
+			targetPos = (*pDragonPath)[p.pathId];
+		}
+		vel = lsk_normalize(targetPos-p.pos) * speed;
+		p.pos += vel * delta;
+		p.body->setPos(p.pos);
+
+
+		if(p.alive == 1 && damageCD <= 0.0 && noPartDamaged) {
+			for(const auto& field: DamageFieldManager::get().fields) {
+				if(field.dmgGroup == DamageGroup::PLAYER &&
+				   intersectTest(field.box, p.body->box, nullptr)) {
+					AudioGet.play(H("snd_punch_hit.ogg"));
+					p.alive = false;
+					damageCD = 0.3;
+					noPartDamaged = false;
+					break;
+				}
+			}
+		}
+
+		Renderer.queueSprite(p.alive ? H("dragon_part_alive.material"): H("dragon_part_dead.material"),
+							 --z, p.pos, {28, 28});
+	}
+}
+
+void ADragon::place(const lsk_Array<lsk_Vec2, 16>* pDragonPath_)
+{
+	pDragonPath = pDragonPath_;
+	curPathId = 0;
+	pos = (*pDragonPath)[0];
+
+	i32 i = 1;
+	for(auto& p: parts) {
+		p.pos.x = pos.x;
+		p.pos.y = pos.y - i * 28;
+		++i;
+	}
+}
+
+void ADragon::endPlay()
+{
+	Physics.bodiesStatic.remove(headBody);
+	for(auto& p: parts) {
+		Physics.bodiesStatic.remove(p.body);
+	}
+}
+
+bool ADragon::isDead()
+{
+	for(auto& p: parts) {
+		if(p.alive) return false;
+	}
+	return true;
+}
+
 bool LD37_Window::postInit()
 {
 	glDisable(GL_CULL_FACE);
@@ -542,7 +659,7 @@ bool LD37_Window::postInit()
 	lsk_randSetSeed(t);
 
 	assets.init();
-	if(!assets.open("../assets/assets.lsk_arch")) {
+	if(!assets.open("assets.lsk_arch")) {
 		return false;
 	}
 
@@ -633,11 +750,14 @@ bool LD37_Window::postInit()
 			if(H(obj.type.c_str()) == H("player_spawn")) {
 				playerSpawnPos = {(f32)obj.x, (f32)obj.y};
 			}
+			if(H(obj.type.c_str()) == H("dragon_path")) {
+				dragonPath.push({(f32)obj.x, (f32)obj.y});
+			}
 		}
 	}
 
-	//start_preGame();
-	start_spawn();
+	start_preGame();
+	//start_spawn();
 
 	return true;
 }
@@ -806,6 +926,7 @@ void LD37_Window::start_explore()
 	player = Ord.spawn_APlayer();
 	player->beginPlay();
 	player->setPos(playerSpawnPos);
+	player->setPos(dragonPath[4]);
 	player->healthComp->maxHealth = 4;
 	player->healthComp->health = 4;
 	player->pPunchAnim = pPunchAnim;
@@ -855,6 +976,9 @@ void LD37_Window::start_chaliceSummon()
 void LD37_Window::start_boss()
 {
 	gamestate = GAMESTATE_BOSS;
+
+	dragon = Ord.spawn_ADragon();
+	dragon->place(&dragonPath);
 }
 
 void LD37_Window::start_defeat()
@@ -885,6 +1009,15 @@ void LD37_Window::start_defeat()
 void LD37_Window::start_victory()
 {
 	gamestate = GAMESTATE_VICTORY;
+	AudioGet._soloud.stopAll();
+
+	/*Timers.add(5, [&] {
+		AudioGet.play(H("snd_boop.ogg"));
+	});*/
+
+	Timers.add(6, [&] {
+		_running = false;
+	});
 }
 
 void LD37_Window::update_preGame(f64 delta)
@@ -941,6 +1074,7 @@ void LD37_Window::update_chaliceSummon(f64 delta)
 void LD37_Window::update_boss(f64 delta)
 {
 	if(player->healthComp->isDead()) {
+		dragon->destroy();
 		start_defeat();
 		return;
 	}
@@ -955,6 +1089,10 @@ void LD37_Window::update_boss(f64 delta)
 
 	for(;h < player->healthComp->maxHealth; ++h) {
 		Renderer.queueSprite(H("heart_empty.material"), 100, {camX + 4.f + 14.f * h, 4}, {14, 14});
+	}
+
+	if(dragon->isDead()) {
+		start_victory();
 	}
 }
 
@@ -971,7 +1109,8 @@ void LD37_Window::update_defeat(f64 delta)
 
 void LD37_Window::update_victory(f64 delta)
 {
-
+	Renderer.viewSetPos(0, 0);
+	Renderer.queueSprite(H("victory.material"), 1000, {0, 0}, {320, 180});
 }
 
 #ifdef _WIN32
