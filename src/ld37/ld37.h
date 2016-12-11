@@ -125,13 +125,13 @@ struct ENTITY ASkeleton: Actor
 	f64 attackAnimCooldownMax = 1.5;
 	f64 attackAnimCooldown = 0;
 	f64 attackTime = 0;
-	f64 attackTimeMax = 0.5;
+	f64 attackTimeMax = 0.15;
 	f32 attackRange = 18;
 	f64 turnCooldownMax = 0.5;
 	f64 turnCooldown = 0;
 
-	f64 nextRandomGruntCD_min = 10.0;
-	f64 nextRandomGruntCD_max = 20.0;
+	f64 nextRandomGruntCD_min = 20.0;
+	f64 nextRandomGruntCD_max = 40.0;
 	f64 nextRandomGruntCD;
 	lsk_Array<u32, 3> sndGruntNameHashes;
 	lsk_Array<u32, 3> sndAttackNameHashes;
@@ -144,6 +144,7 @@ struct ENTITY ASkeleton: Actor
 	void beginPlay() override;
 	void update(f64 delta) override;
 	virtual void attack();
+	virtual void die();
 };
 
 struct ENTITY ASkeletonBigShield: ASkeleton
@@ -152,6 +153,7 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 
 	//void update(f64 delta) override;
 	void attack() override;
+	void die() override;
 };
 
 struct MaterialAnimation

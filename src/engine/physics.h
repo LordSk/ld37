@@ -9,7 +9,7 @@ struct BodyRectAligned
 	u8 x_locked = false;
 	u8 y_locked = false;
 	u8 intersecting = false;
-	i32 group = 0;
+	i32 group = -1;
 	void* pUserData = nullptr;
 
 	inline void setPos(const lsk_Vec2& pos) {

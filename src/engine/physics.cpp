@@ -87,7 +87,7 @@ void PhysicsManager::update(f64 delta)
 			for(i32 j = 0; j < dynamicCount; ++j) {
 				if(i == j) continue;
 				BodyRectAligned& bodyB = bodiesDynamic.data()[j];
-				if(bodyB.group == bodyA.group) continue;
+				if(bodyA.group != -1 && bodyB.group == bodyA.group) continue;
 				lsk_Vec2 pushVec;
 
 				if(intersectTest(bodyA.box, bodyB.box, &pushVec)) {

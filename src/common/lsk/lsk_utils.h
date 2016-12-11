@@ -184,5 +184,6 @@ inline u64 lsk_countCycles() {
 	return __rdtsc();
 }
 
+void lsk_randSetSeed(u32 seed_);
 u32 lsk_rand();
 f64 lsk_randf();

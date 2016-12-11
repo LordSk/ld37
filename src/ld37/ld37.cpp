@@ -3,6 +3,7 @@
 #include <lsk/lsk_console.h>
 #include <engine/timer.h>
 #include <engine/audio.h>
+#include <time.h>
 
 #define SKELETON_AGGRO_RANGE 220.f
 #define GLOBAL_VOLUME 0.5
@@ -189,7 +190,7 @@ void APlayer::update(f64 delta)
 			sprite->size.x = EXPLORER_PUNCH_SIZEX;
 		}
 		else {
-			sprite->localPos.x = EXPLORER_PUNCH_SIZEX;
+			sprite->localPos.x = EXPLORER_PUNCH_SIZEX - 8;
 			sprite->size.x = -EXPLORER_PUNCH_SIZEX;
 		}
 	}
@@ -242,6 +243,12 @@ void ASkeleton::update(f64 delta)
 {
 	Actor::update(delta);
 
+	if(healthComp->isDead()) {
+		die();
+		destroy();
+		return;
+	}
+
 	input = {};
 	attackAnimCooldown -= delta;
 	nextRandomGruntCD -= delta;
@@ -269,14 +276,19 @@ void ASkeleton::update(f64 delta)
 		return;
 	}
 
-	if(nextRandomGruntCD <= 0.0 && attackAnimCooldown <= 0) {
-		nextRandomGruntCD = nextRandomGruntCD_min +
-				lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
-		AudioGet.play(sndGruntNameHashes[lsk_rand() % sndGruntNameHashes.count()], 0.5f);
+	f32 targetXDelta = target->pos.x - transform->position.x;
+
+	if(lsk_abs(targetXDelta) < 400.f) {
+		nextRandomGruntCD -= delta;
+		if(nextRandomGruntCD <= 0.0 && attackAnimCooldown <= 0) {
+			nextRandomGruntCD = nextRandomGruntCD_min +
+					lsk_randf() * (nextRandomGruntCD_max - nextRandomGruntCD_min);
+			AudioGet.play(sndGruntNameHashes[lsk_rand() % sndGruntNameHashes.count()],
+					0.3f + lsk_randf() * 0.3f);
+		}
 	}
 
 	// attack !
-	f32 targetXDelta = target->pos.x - transform->position.x;
 	if(lsk_abs(targetXDelta) < SKELETON_AGGRO_RANGE) {
 		input.x = lsk_sign(targetXDelta);
 		if(lsk_abs(targetXDelta) < attackRange) {
@@ -318,11 +330,11 @@ void ASkeleton::update(f64 delta)
 	}
 
 	// actual attack
-	if(attackAnimCooldown > 0 && attackAnimCooldown < attackTime) {
+	if(attackAnimCooldown > 0 && attackAnimCooldown < attackAnimCooldownMax - attackTime) {
 		lsk_printf("SMACK!");
 		attack();
 		AudioGet.play(sndAttackNameHashes[lsk_rand() % sndAttackNameHashes.count()]);
-		attackTime = 0;
+		attackTime = 10000;
 	}
 
 	// attack animation
@@ -344,6 +356,16 @@ void ASkeleton::attack()
 	damageFieldCreate(fieldPos, {20, 20}, DamageGroup::ENEMY, pos);
 }
 
+void ASkeleton::die()
+{
+	constexpr u32 dieSounds[] = {
+		H("snd_skeleton_die1.ogg"),
+		H("snd_skeleton_die2.ogg"),
+		H("snd_skeleton_die3.ogg")
+	};
+	AudioGet.play(dieSounds[lsk_rand() % 3], 0.5f + lsk_randf() * 0.3f);
+}
+
 ASkeletonBigShield::ASkeletonBigShield()
 {
 	bodySize = {20, 40};
@@ -354,7 +376,7 @@ ASkeletonBigShield::ASkeletonBigShield()
 	attackAnimCooldownMax = 2.0;
 	turnCooldownMax = 1.0;
 	attackRange = 30;
-	attackTimeMax = 1.0;
+	attackTimeMax = 0.2;
 
 	knockbackMultiplier = 0.5;
 
@@ -380,6 +402,16 @@ void ASkeletonBigShield::attack()
 	damageFieldCreate(fieldPos, {20, 40}, DamageGroup::ENEMY, pos);
 }
 
+void ASkeletonBigShield::die()
+{
+	constexpr u32 dieSounds[] = {
+		H("snd_skeleton_big_die1.ogg"),
+		H("snd_skeleton_big_die2.ogg"),
+		H("snd_skeleton_big_die3.ogg")
+	};
+	AudioGet.play(dieSounds[lsk_rand() % 3], 0.5f + lsk_randf() * 0.3f);
+}
+
 void MaterialAnimation::update(f64 delta)
 {
 	if(paused) return;
@@ -399,6 +431,9 @@ bool LD37_Window::postInit()
 	DamageFieldManager::get().init();
 
 	Renderer.viewResize(320, 180);
+
+	time_t t = time(0);
+	lsk_randSetSeed(t);
 
 	assets.init();
 	if(!assets.open("../assets/assets.lsk_arch")) {
@@ -472,9 +507,17 @@ bool LD37_Window::postInit()
 				player->setPos({(f32)obj.x, (f32)obj.y});
 			}
 			else if(H(obj.type.c_str()) == H("skeleton_spawn")) {
-				auto skeleton = Ord.spawn_ASkeleton();
-				skeleton->beginPlay();
-				skeleton->setPos({(f32)obj.x, (f32)obj.y});
+				i32 r = lsk_rand()%2;
+				if(r == 0) {
+					auto skeleton = Ord.spawn_ASkeleton();
+					skeleton->beginPlay();
+					skeleton->setPos({(f32)obj.x, (f32)obj.y});
+				}
+				else {
+					auto skeleton = Ord.spawn_ASkeletonBigShield();
+					skeleton->beginPlay();
+					skeleton->setPos({(f32)obj.x, (f32)obj.y});
+				}
 			}
 		}
 	}
@@ -497,7 +540,8 @@ void LD37_Window::update(f64 delta)
 	DamageFieldManager::get().update(delta);
 	Ord.update(delta);
 
-	Renderer.viewSetPos(player->bodyComp->body->box.min.x - 50, 0);
+	f32 camX = lsk_clamp(player->bodyComp->body->box.min.x - 120.f, 0.f, gamemap.width*14.f - 320);
+	Renderer.viewSetPos(camX, 0);
 
 	gamemap.draw();
 
