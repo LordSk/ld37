@@ -14,6 +14,11 @@
 
 #define SKELETON_IDLE_SIZEX 20
 #define SKELETON_RUNNING_SIZEX 33
+#define SKELETON_ATTACK_SIZEX 45
+
+#define SKELETON_BIG_IDLE_SIZEX 27
+#define SKELETON_RUNNING_SIZEX 27
+#define SKELETON_ATTACK_SIZEX 45
 
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
@@ -324,10 +329,10 @@ void ASkeleton::update(f64 delta)
 			bodyComp->body->vel.x = xSpeed;
 			dir = 1;
 			turnCooldown = turnCooldownMax;
-
-			sprite->materialName = H("skeleton_running.material");
-			sprite->localPos.x = -9;
-			sprite->size.x = SKELETON_RUNNING_SIZEX;
+			playRun();
+		}
+		else {
+			playIdle();
 		}
 	}
 	else if(input.x == -1) {
@@ -335,23 +340,15 @@ void ASkeleton::update(f64 delta)
 			bodyComp->body->vel.x = -xSpeed;
 			dir = -1;
 			turnCooldown = turnCooldownMax;
-
-			sprite->materialName = H("skeleton_running.material");
-			sprite->localPos.x = SKELETON_RUNNING_SIZEX - 12;
-			sprite->size.x = -SKELETON_RUNNING_SIZEX;
+			playRun();
+		}
+		else {
+			playIdle();
 		}
 	}
 	else {
 		bodyComp->body->vel.x = 0;
-		sprite->materialName = H("skeleton_idle.material");
-		if(dir == 1) {
-			sprite->localPos.x = 0;
-			sprite->size.x = SKELETON_IDLE_SIZEX;
-		}
-		else {
-			sprite->localPos.x = SKELETON_IDLE_SIZEX - 6;
-			sprite->size.x = -SKELETON_IDLE_SIZEX;
-		}
+		playIdle();
 	}
 
 	// actual attack
@@ -360,6 +357,10 @@ void ASkeleton::update(f64 delta)
 		attack();
 		AudioGet.play(sndAttackNameHashes[lsk_rand() % sndAttackNameHashes.count()]);
 		attackTime = 10000;
+	}
+
+	if(attackAnimCooldown > 0 && attackAnimCooldown > attackAnimCooldownMax - attackTimeMax) {
+		playAttack();
 	}
 
 	// attack animation
@@ -391,9 +392,50 @@ void ASkeleton::die()
 	AudioGet.play(dieSounds[lsk_rand() % 3], 0.5f + lsk_randf() * 0.3f);
 }
 
+void ASkeleton::playIdle()
+{
+	sprite->materialName = H("skeleton_idle.material");
+	if(dir == 1) {
+		sprite->localPos.x = 0;
+		sprite->size.x = SKELETON_IDLE_SIZEX;
+	}
+	else {
+		sprite->localPos.x = SKELETON_IDLE_SIZEX - 6;
+		sprite->size.x = -SKELETON_IDLE_SIZEX;
+	}
+}
+
+void ASkeleton::playRun()
+{
+	if(dir == 1) {
+	sprite->materialName = H("skeleton_running.material");
+	sprite->localPos.x = -9;
+	sprite->size.x = SKELETON_RUNNING_SIZEX;
+	}
+	else {
+		sprite->materialName = H("skeleton_running.material");
+		sprite->localPos.x = SKELETON_RUNNING_SIZEX - 12;
+		sprite->size.x = -SKELETON_RUNNING_SIZEX;
+	}
+}
+
+void ASkeleton::playAttack()
+{
+	sprite->materialName = H("skeleton_attack.material");
+	if(dir == 1) {
+		sprite->localPos.x = 0;
+		sprite->size.x = SKELETON_ATTACK_SIZEX;
+	}
+	else {
+		sprite->localPos.x = SKELETON_ATTACK_SIZEX - 20;
+		sprite->size.x = -SKELETON_ATTACK_SIZEX;
+	}
+}
+
 ASkeletonBigShield::ASkeletonBigShield()
 {
 	bodySize = {20, 40};
+	sprite->size.y = 40;
 	healthComp->maxHealth = 4;
 	healthComp->health = 4;
 
@@ -435,6 +477,32 @@ void ASkeletonBigShield::die()
 		H("snd_skeleton_big_die3.ogg")
 	};
 	AudioGet.play(dieSounds[lsk_rand() % 3], 0.5f + lsk_randf() * 0.3f);
+}
+
+void ASkeletonBigShield::playIdle()
+{
+	sprite->materialName = H("skeleton_big_idle.material");
+	if(dir == 1) {
+		sprite->localPos.x = 0;
+		sprite->size.x = SKELETON_BIG_IDLE_SIZEX;
+	}
+	else {
+		sprite->localPos.x = SKELETON_BIG_IDLE_SIZEX - 6;
+		sprite->size.x = -SKELETON_BIG_IDLE_SIZEX;
+	}
+}
+
+void ASkeletonBigShield::playRun()
+{
+	sprite->materialName = H("skeleton_big_running.material");
+	if(dir == 1) {
+		sprite->localPos.x = 0;
+		sprite->size.x = SKELETON_RUNNING_SIZEX;
+	}
+	else {
+		sprite->localPos.x = SKELETON_RUNNING_SIZEX - 6;
+		sprite->size.x = -SKELETON_RUNNING_SIZEX;
+	}
 }
 
 void MaterialAnimation::update(f64 delta)
@@ -498,6 +566,14 @@ bool LD37_Window::postInit()
 	anim.pMat = &Renderer.materials.getTextured(H("explorer_wake.material"));
 	anim.frameTime = 0.5f;
 	pWakeAnim = &matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("skeleton_attack.material"));
+	anim.frameTime = 0.15f / 2.f;
+	matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("skeleton_big_running.material"));
+	anim.frameTime = 0.2f;
+	matAnims.push(anim);
 
 	// load tiledmap
 	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
@@ -867,7 +943,7 @@ void LD37_Window::update_boss(f64 delta)
 void LD37_Window::update_defeat(f64 delta)
 {
 	if((Timers.getTime() - lastStateChangeTime) > 2.5) {
-		Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+		Renderer.queueSprite(H("black.material"), 1000, {camX, 0}, {320, 180});
 	}
 	else {
 		Renderer.queueSprite(H("explorer_death.material"), 1000, {lastPlayerPos.x, lastPlayerPos.y-1},

@@ -148,6 +148,10 @@ struct ENTITY ASkeleton: Actor
 	void update(f64 delta) override;
 	virtual void attack();
 	virtual void die();
+
+	virtual void playIdle();
+	virtual void playRun();
+	virtual void playAttack();
 };
 
 struct ENTITY ASkeletonBigShield: ASkeleton
@@ -157,6 +161,9 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 	//void update(f64 delta) override;
 	void attack() override;
 	void die() override;
+	void playIdle() override;
+	void playRun();
+	//void playAttack();
 };
 
 struct MaterialAnimation
