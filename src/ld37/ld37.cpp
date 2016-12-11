@@ -456,7 +456,7 @@ bool LD37_Window::postInit()
 
 	anim.pMat = &Renderer.materials.getTextured(H("explorer_punch.material"));
 	anim.frameTime = 0.125f;
-	MaterialAnimation* pPunchAnim = &matAnims.push(anim);
+	pPunchAnim = &matAnims.push(anim);
 
 	// load tiledmap
 	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
@@ -497,30 +497,16 @@ bool LD37_Window::postInit()
 		}
 	}
 
-	player = Ord.spawn_APlayer();
-	player->beginPlay();
-	player->pPunchAnim = pPunchAnim;
-
 	for(const auto& layer: gamemap.objectLayers) {
 		for(const auto& obj: layer.objects) {
 			if(H(obj.type.c_str()) == H("player_spawn")) {
-				player->setPos({(f32)obj.x, (f32)obj.y});
-			}
-			else if(H(obj.type.c_str()) == H("skeleton_spawn")) {
-				i32 r = lsk_rand()%2;
-				if(r == 0) {
-					auto skeleton = Ord.spawn_ASkeleton();
-					skeleton->beginPlay();
-					skeleton->setPos({(f32)obj.x, (f32)obj.y});
-				}
-				else {
-					auto skeleton = Ord.spawn_ASkeletonBigShield();
-					skeleton->beginPlay();
-					skeleton->setPos({(f32)obj.x, (f32)obj.y});
-				}
+				playerSpawnPos = {(f32)obj.x, (f32)obj.y};
 			}
 		}
 	}
+
+	//start_preGame();
+	start_spawn();
 
 	return true;
 }
@@ -539,9 +525,6 @@ void LD37_Window::update(f64 delta)
 	IGameWindow::update(delta);
 	DamageFieldManager::get().update(delta);
 	Ord.update(delta);
-
-	f32 camX = lsk_clamp(player->bodyComp->body->box.min.x - 120.f, 0.f, gamemap.width*14.f - 320);
-	Renderer.viewSetPos(camX, 0);
 
 	gamemap.draw();
 
@@ -562,13 +545,18 @@ void LD37_Window::update(f64 delta)
 	}
 #endif
 
-	for(auto& comp: Ord._comp_CTarget) {
-		comp.pos.x = player->transform->position.x;
-		comp.pos.y = player->transform->position.y;
-	}
-
 	for(auto& anim: matAnims) {
 		anim.update(delta);
+	}
+
+	switch(gamestate) {
+		case GAMESTATE_PREGAME: update_preGame(delta); break;
+		case GAMESTATE_SPAWN: update_spawn(delta); break;
+		case GAMESTATE_EXPLORE: update_explore(delta); break;
+		case GAMESTATE_CHALICE_SUMMON: update_chaliceSummon(delta); break;
+		case GAMESTATE_BOSS: update_boss(delta); break;
+		case GAMESTATE_DEFEAT: update_end(delta); break;
+		case GAMESTATE_VICTORY: update_victory(delta); break;
 	}
 }
 
@@ -584,62 +572,237 @@ bool LD37_Window::handleEvent(SDL_Event event)
 		return false;
 	}
 
-	if(event.type == SDL_KEYDOWN) {
-		if(event.key.keysym.sym == SDLK_d) {
-			player->input.x = 1;
-			return true;
-		}
-		if(event.key.keysym.sym == SDLK_q ||
-		   event.key.keysym.sym == SDLK_a) {
-			player->input.x = -1;
-			return true;
-		}
-		if(event.key.keysym.sym == SDLK_SPACE ||
-		   event.key.keysym.sym == SDLK_w ||
-		   event.key.keysym.sym == SDLK_z) {
-			player->input.jump = 1;
-			return true;
-		}
-		if(event.key.keysym.sym == SDLK_f) {
-			player->input.attack = 1;
-			return true;
-		}
-	}
-
-	if(event.type == SDL_KEYUP) {
-		if(event.key.keysym.sym == SDLK_d) {
-			if(player->input.x == 1) {
-				player->input.x = 0;
+	if(gamestate == GAMESTATE_EXPLORE || gamestate == GAMESTATE_BOSS) {
+		if(event.type == SDL_KEYDOWN) {
+			if(event.key.keysym.sym == SDLK_d) {
+				player->input.x = 1;
+				return true;
 			}
-			return true;
-		}
-		if(event.key.keysym.sym == SDLK_q ||
-		   event.key.keysym.sym == SDLK_a) {
-			if(player->input.x == -1) {
-				player->input.x = 0;
+			if(event.key.keysym.sym == SDLK_q ||
+			   event.key.keysym.sym == SDLK_a) {
+				player->input.x = -1;
+				return true;
 			}
-			return true;
+			if(event.key.keysym.sym == SDLK_SPACE ||
+			   event.key.keysym.sym == SDLK_w ||
+			   event.key.keysym.sym == SDLK_z) {
+				player->input.jump = 1;
+				return true;
+			}
+			if(event.key.keysym.sym == SDLK_f) {
+				player->input.attack = 1;
+				return true;
+			}
 		}
-		if(event.key.keysym.sym == SDLK_SPACE ||
-		   event.key.keysym.sym == SDLK_w ||
-		   event.key.keysym.sym == SDLK_z) {
-			player->input.jump = 0;
-			return true;
-		}
-		if(event.key.keysym.sym == SDLK_f) {
-			player->input.attack = 0;
-			return true;
-		}
+
+		if(event.type == SDL_KEYUP) {
+			if(event.key.keysym.sym == SDLK_d) {
+				if(player->input.x == 1) {
+					player->input.x = 0;
+				}
+				return true;
+			}
+			if(event.key.keysym.sym == SDLK_q ||
+			   event.key.keysym.sym == SDLK_a) {
+				if(player->input.x == -1) {
+					player->input.x = 0;
+				}
+				return true;
+			}
+			if(event.key.keysym.sym == SDLK_SPACE ||
+			   event.key.keysym.sym == SDLK_w ||
+			   event.key.keysym.sym == SDLK_z) {
+				player->input.jump = 0;
+				return true;
+			}
+			if(event.key.keysym.sym == SDLK_f) {
+				player->input.attack = 0;
+				return true;
+			}
 
 
 
-		if(event.key.keysym.sym == SDLK_c) {
-			debugCollisions ^= 1;
-			return true;
+			if(event.key.keysym.sym == SDLK_c) {
+				debugCollisions ^= 1;
+				return true;
+			}
 		}
 	}
 
 	return true;
+}
+
+void LD37_Window::start_preGame()
+{
+	gamestate = GAMESTATE_PREGAME;
+
+	Timers.add(3.0, [&] {
+		start_spawn();
+	});
+}
+
+void LD37_Window::start_spawn()
+{
+	gamestate = GAMESTATE_SPAWN;
+
+	Timers.add(2.0, [&] {
+		start_explore();
+	});
+}
+
+void LD37_Window::start_explore()
+{
+	gamestate = GAMESTATE_EXPLORE;
+
+	player = Ord.spawn_APlayer();
+	player->beginPlay();
+	player->setPos(playerSpawnPos);
+	player->healthComp->maxHealth = 4;
+	player->healthComp->health = 4;
+	player->pPunchAnim = pPunchAnim;
+
+	// spawn skeletons
+	for(const auto& layer: gamemap.objectLayers) {
+		for(const auto& obj: layer.objects) {
+			if(H(obj.type.c_str()) == H("skeleton_spawn")) {
+				i32 r = lsk_rand()%2;
+				if(r == 0) {
+					auto skeleton = Ord.spawn_ASkeleton();
+					skeleton->beginPlay();
+					skeleton->setPos({(f32)obj.x, (f32)obj.y});
+				}
+				else {
+					auto skeleton = Ord.spawn_ASkeletonBigShield();
+					skeleton->beginPlay();
+					skeleton->setPos({(f32)obj.x, (f32)obj.y});
+				}
+			}
+		}
+	}
+}
+
+void LD37_Window::start_chaliceSummon()
+{
+	gamestate = GAMESTATE_CHALICE_SUMMON;
+	player->input = {};
+	player->healthComp->health = player->healthComp->maxHealth;
+
+	for(auto& skel: Ord._entity_ASkeleton) {
+		skel.destroy();
+	}
+
+	for(auto& skel: Ord._entity_ASkeletonBigShield) {
+		skel.destroy();
+	}
+
+	Timers.add(2.0, [&] {
+		start_boss();
+	});
+}
+
+void LD37_Window::start_boss()
+{
+	gamestate = GAMESTATE_BOSS;
+}
+
+void LD37_Window::start_end()
+{
+	gamestate = GAMESTATE_DEFEAT;
+
+	for(auto& skel: Ord._entity_ASkeleton) {
+		skel.destroy();
+	}
+
+	for(auto& skel: Ord._entity_ASkeletonBigShield) {
+		skel.destroy();
+	}
+
+	Timers.add(2.0, [&] {
+		start_spawn();
+	});
+}
+
+void LD37_Window::start_victory()
+{
+	gamestate = GAMESTATE_VICTORY;
+}
+
+void LD37_Window::update_preGame(f64 delta)
+{
+	Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+}
+
+void LD37_Window::update_spawn(f64 delta)
+{
+	Renderer.queueSprite(H("text_dream.material"), 1000, {160-70, 180-28}, {140, 28});
+}
+
+void LD37_Window::update_explore(f64 delta)
+{
+	if(player->healthComp->isDead()) {
+		player->destroy();
+		Renderer.viewSetPos(0, 0);
+		start_end();
+		return;
+	}
+
+	camX = lsk_clamp(player->bodyComp->body->box.min.x - 120.f, 0.f, gamemap.width*14.f - 320);
+	Renderer.viewSetPos(camX, 0);
+
+	for(auto& comp: Ord._comp_CTarget) {
+		comp.pos.x = player->transform->position.x;
+		comp.pos.y = player->transform->position.y;
+	}
+
+	i32 h = 0;
+	for(; h < player->healthComp->health; ++h) {
+		Renderer.queueSprite(H("heart_full.material"), 100, {camX + 4.f + 14.f * h, 4}, {14, 14});
+	}
+
+	for(;h < player->healthComp->maxHealth; ++h) {
+		Renderer.queueSprite(H("heart_empty.material"), 100, {camX + 4.f + 14.f * h, 4}, {14, 14});
+	}
+
+	if(player->transform->position.x > (182*14.f)) {
+		start_chaliceSummon();
+	}
+}
+
+void LD37_Window::update_chaliceSummon(f64 delta)
+{
+	Renderer.queueSprite(H("text_chalice.material"), 1000, {camX + 160-70, 180-28}, {140, 28});
+}
+
+void LD37_Window::update_boss(f64 delta)
+{
+	if(player->healthComp->isDead()) {
+		player->destroy();
+		Renderer.viewSetPos(0, 0);
+		start_end();
+		return;
+	}
+
+	camX = lsk_clamp(player->bodyComp->body->box.min.x - 120.f, 0.f, gamemap.width*14.f - 320);
+	Renderer.viewSetPos(camX, 0);
+
+	i32 h = 0;
+	for(; h < player->healthComp->health; ++h) {
+		Renderer.queueSprite(H("heart_full.material"), 100, {camX + 4.f + 14.f * h, 4}, {14, 14});
+	}
+
+	for(;h < player->healthComp->maxHealth; ++h) {
+		Renderer.queueSprite(H("heart_empty.material"), 100, {camX + 4.f + 14.f * h, 4}, {14, 14});
+	}
+}
+
+void LD37_Window::update_end(f64 delta)
+{
+	Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+}
+
+void LD37_Window::update_victory(f64 delta)
+{
+
 }
 
 #ifdef _WIN32

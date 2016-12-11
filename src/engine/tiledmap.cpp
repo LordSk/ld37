@@ -86,9 +86,10 @@ bool TiledMap::load(const char* buff, bool verbose)
 		else if(lsk_strEq(type, "objectgroup")) {
 			LayerObject& layerObj = objectLayers.push(LayerObject());
 			layerObj.name.set(name);
-
 			JSON_Array* objArray = json_object_get_array(layerJsonObj, "objects");
 			const i32 objArrayCount = json_array_get_count(objArray);
+			layerObj.objects.reserve(objArrayCount); // TODO: fix array realloc on complicated types
+
 			if(verbose) lsk_printf("objects.count=%d", objArrayCount);
 			for(i32 o = 0; o < objArrayCount; ++o) {
 				JSON_Object* jsonObj = json_array_get_object(objArray, o);

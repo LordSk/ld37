@@ -207,7 +207,7 @@ bool Archive::saveTo(const char* path)
 void Archive::loadData() const
 {
 	for(const auto& file: fileList) {
-		lsk_printf("- %s : %d", file.name.c_str(), file.type);
+		//lsk_printf("- %s : %d", file.name.c_str(), file.type);
 
 		switch(file.type) {
 			case ArchiveFileType::TEXTURE: {
