@@ -754,7 +754,7 @@ void LD37_Window::start_preGame()
 {
 	gamestate = GAMESTATE_PREGAME;
 
-	Timers.add(3.0, [&] {
+	Timers.add(10.0, [&] {
 		start_spawn();
 	});
 }
@@ -765,8 +765,13 @@ void LD37_Window::start_spawn()
 
 	Renderer.viewSetPos(0, 0);
 	pWakeAnim->reset();
+	pWakeAnim->paused = 0;
 
-	Timers.add(1.5, [&] {
+	Timers.add(1.4, [&] {
+		pWakeAnim->paused = 1;
+	});
+
+	Timers.add(3, [&] {
 		start_explore();
 	});
 
@@ -871,7 +876,7 @@ void LD37_Window::start_victory()
 
 void LD37_Window::update_preGame(f64 delta)
 {
-	Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+	Renderer.queueSprite(H("story.material"), 1000, {0, 0}, {320, 180});
 }
 
 void LD37_Window::update_spawn(f64 delta)
