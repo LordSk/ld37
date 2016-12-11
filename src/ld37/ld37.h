@@ -178,9 +178,15 @@ struct LD37_Window: IGameWindow
 	bool debugCollisions = true;
 	lsk_DArray<MaterialAnimation> matAnims;
 
-	f32 camX;
 	MaterialAnimation* pPunchAnim;
+	MaterialAnimation* pDeathAnim;
+	MaterialAnimation* pWakeAnim;
+
+	f32 camX;
 	lsk_Vec2 playerSpawnPos;
+	lsk_Vec2 lastPlayerPos;
+
+	f64 lastStateChangeTime = 0;
 
 	enum {
 		GAMESTATE_PREGAME = 0,
@@ -205,7 +211,7 @@ struct LD37_Window: IGameWindow
 	void start_explore();
 	void start_chaliceSummon();
 	void start_boss();
-	void start_end();
+	void start_defeat();
 	void start_victory();
 
 	void update_preGame(f64 delta);
@@ -213,6 +219,6 @@ struct LD37_Window: IGameWindow
 	void update_explore(f64 delta);
 	void update_chaliceSummon(f64 delta);
 	void update_boss(f64 delta);
-	void update_end(f64 delta);
+	void update_defeat(f64 delta);
 	void update_victory(f64 delta);
 };

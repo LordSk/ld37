@@ -78,10 +78,10 @@ void CHealth::takeDamage(const DamageField& source)
 		lastSource = source;
 
 		if(source.dmgGroup == DamageGroup::ENEMY) {
-			AudioGet.play(H("enemy_hit.ogg"));
+			AudioGet.play(H("snd_enemy_hit.ogg"));
 		}
 		else {
-			AudioGet.play(H("punch_hit.ogg"));
+			AudioGet.play(H("snd_punch_hit.ogg"));
 		}
 	}
 }
@@ -491,6 +491,14 @@ bool LD37_Window::postInit()
 	anim.frameTime = 0.15f;
 	matAnims.push(anim);
 
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_death.material"));
+	anim.frameTime = 0.5f;
+	pDeathAnim = &matAnims.push(anim);
+
+	anim.pMat = &Renderer.materials.getTextured(H("explorer_wake.material"));
+	anim.frameTime = 0.5f;
+	pWakeAnim = &matAnims.push(anim);
+
 	// load tiledmap
 	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
 	if(!gamemap.load((const char*)mapFile.buffer.ptr)) {
@@ -499,6 +507,7 @@ bool LD37_Window::postInit()
 
 	gamemap.initForDrawing();
 
+	// map collision
 	for(const auto& layer: gamemap.tileLayers) {
 		if(H(layer.name.c_str()) == H("foreground")) {
 			for(i32 y = 0; y < layer.height; ++y) {
@@ -588,7 +597,7 @@ void LD37_Window::update(f64 delta)
 		case GAMESTATE_EXPLORE: update_explore(delta); break;
 		case GAMESTATE_CHALICE_SUMMON: update_chaliceSummon(delta); break;
 		case GAMESTATE_BOSS: update_boss(delta); break;
-		case GAMESTATE_DEFEAT: update_end(delta); break;
+		case GAMESTATE_DEFEAT: update_defeat(delta); break;
 		case GAMESTATE_VICTORY: update_victory(delta); break;
 	}
 }
@@ -678,9 +687,22 @@ void LD37_Window::start_spawn()
 {
 	gamestate = GAMESTATE_SPAWN;
 
-	Timers.add(2.0, [&] {
+	Renderer.viewSetPos(0, 0);
+	pWakeAnim->reset();
+
+	Timers.add(1.5, [&] {
 		start_explore();
 	});
+
+	for(auto& skel: Ord._entity_ASkeleton) {
+		skel.destroy();
+	}
+
+	for(auto& skel: Ord._entity_ASkeletonBigShield) {
+		skel.destroy();
+	}
+
+	AudioGet._soloud.stopAll();
 }
 
 void LD37_Window::start_explore()
@@ -731,6 +753,9 @@ void LD37_Window::start_chaliceSummon()
 	Timers.add(2.0, [&] {
 		start_boss();
 	});
+
+	AudioGet._soloud.stopAll();
+	AudioGet.play(H("snd_chalice_summon.ogg"));
 }
 
 void LD37_Window::start_boss()
@@ -738,21 +763,29 @@ void LD37_Window::start_boss()
 	gamestate = GAMESTATE_BOSS;
 }
 
-void LD37_Window::start_end()
+void LD37_Window::start_defeat()
 {
 	gamestate = GAMESTATE_DEFEAT;
+	lastPlayerPos = {
+		player->transform->position.x,
+		player->transform->position.y
+	};
+	player->destroy();
 
-	for(auto& skel: Ord._entity_ASkeleton) {
-		skel.destroy();
-	}
+	pDeathAnim->paused = 0;
+	pDeathAnim->reset();
 
-	for(auto& skel: Ord._entity_ASkeletonBigShield) {
-		skel.destroy();
-	}
+	Timers.add(1.2, [&] {
+		pDeathAnim->paused = 1;
+	});
 
-	Timers.add(2.0, [&] {
+	Timers.add(4.0, [&] {
 		start_spawn();
 	});
+
+	lastStateChangeTime = Timers.getTime();
+
+	AudioGet.play(H("snd_death.ogg"));
 }
 
 void LD37_Window::start_victory()
@@ -767,15 +800,20 @@ void LD37_Window::update_preGame(f64 delta)
 
 void LD37_Window::update_spawn(f64 delta)
 {
+	Renderer.queueSprite(H("explorer_wake.material"), 1000, {playerSpawnPos.x, playerSpawnPos.y-1},
+		{38, 38});
 	Renderer.queueSprite(H("text_dream.material"), 1000, {160-70, 180-28}, {140, 28});
 }
 
 void LD37_Window::update_explore(f64 delta)
 {
 	if(player->healthComp->isDead()) {
+		lastPlayerPos = {
+			player->transform->position.x,
+			player->transform->position.y
+		};
 		player->destroy();
-		Renderer.viewSetPos(0, 0);
-		start_end();
+		start_defeat();
 		return;
 	}
 
@@ -809,9 +847,7 @@ void LD37_Window::update_chaliceSummon(f64 delta)
 void LD37_Window::update_boss(f64 delta)
 {
 	if(player->healthComp->isDead()) {
-		player->destroy();
-		Renderer.viewSetPos(0, 0);
-		start_end();
+		start_defeat();
 		return;
 	}
 
@@ -828,9 +864,15 @@ void LD37_Window::update_boss(f64 delta)
 	}
 }
 
-void LD37_Window::update_end(f64 delta)
+void LD37_Window::update_defeat(f64 delta)
 {
-	Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+	if((Timers.getTime() - lastStateChangeTime) > 2.5) {
+		Renderer.queueSprite(H("black.material"), 1000, {0, 0}, {320, 180});
+	}
+	else {
+		Renderer.queueSprite(H("explorer_death.material"), 1000, {lastPlayerPos.x, lastPlayerPos.y-1},
+			{38, 38});
+	}
 }
 
 void LD37_Window::update_victory(f64 delta)
