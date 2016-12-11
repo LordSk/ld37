@@ -12,6 +12,8 @@
 #define EXPLORER_RUNNING_SIZEX 26
 #define EXPLORER_PUNCH_SIZEX 24
 
+#define SKELETON_IDLE_SIZEX 20
+
 enum: i32 {
 	BODYGROUP_PLAYER = 0,
 	BODYGROUP_SKELETON,
@@ -216,10 +218,15 @@ void APlayer::attack()
 
 ASkeleton::ASkeleton()
 {
-	bodySize = {14, 34};
+	bodySize = {14, 37};
 	target = Ord.make_CTarget();
 	healthComp = Ord.make_CHealth();
 	healthComp->dmgGroup = DamageGroup::ENEMY;
+	sprite = Ord.make_Sprite();
+	sprite->transform = transform;
+	sprite->size = {20, 37};
+	sprite->materialName = H("skeleton_idle.material");
+
 	attackRange = 18;
 
 	nextRandomGruntCD = nextRandomGruntCD_min +
@@ -327,6 +334,15 @@ void ASkeleton::update(f64 delta)
 	}
 	else {
 		bodyComp->body->vel.x = 0;
+		sprite->materialName = H("skeleton_idle.material");
+		if(dir == 1) {
+			sprite->localPos.x = 0;
+			sprite->size.x = SKELETON_IDLE_SIZEX;
+		}
+		else {
+			sprite->localPos.x = SKELETON_IDLE_SIZEX - 6;
+			sprite->size.x = -SKELETON_IDLE_SIZEX;
+		}
 	}
 
 	// actual attack
@@ -458,6 +474,10 @@ bool LD37_Window::postInit()
 	anim.frameTime = 0.125f;
 	pPunchAnim = &matAnims.push(anim);
 
+	anim.pMat = &Renderer.materials.getTextured(H("skeleton_idle.material"));
+	anim.frameTime = 0.75f;
+	matAnims.push(anim);
+
 	// load tiledmap
 	ArchiveFile& mapFile = assets.fileStrMap.geth(H("map1.json"))->get();
 	if(!gamemap.load((const char*)mapFile.buffer.ptr)) {
@@ -521,6 +541,10 @@ void LD37_Window::preExit()
 
 void LD37_Window::update(f64 delta)
 {
+	for(auto& anim: matAnims) {
+		anim.update(delta);
+	}
+
 	Physics.update(delta);
 	IGameWindow::update(delta);
 	DamageFieldManager::get().update(delta);
@@ -544,10 +568,6 @@ void LD37_Window::update(f64 delta)
 		}
 	}
 #endif
-
-	for(auto& anim: matAnims) {
-		anim.update(delta);
-	}
 
 	switch(gamestate) {
 		case GAMESTATE_PREGAME: update_preGame(delta); break;

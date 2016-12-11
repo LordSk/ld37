@@ -73,6 +73,8 @@ void Ordinator::destroy_ASkeleton(ASkeleton& ent)
 	_comp_CTarget.remove(ent.target);
 	ent.healthComp->endPlay();
 	_comp_CHealth.remove(ent.healthComp);
+	ent.sprite->endPlay();
+	_comp_Sprite.remove(ent.sprite);
 	ent.endPlay();
 	_entity_ASkeleton.remove(ent);
 }
@@ -92,6 +94,8 @@ void Ordinator::destroy_ASkeletonBigShield(ASkeletonBigShield& ent)
 	_comp_CTarget.remove(ent.target);
 	ent.healthComp->endPlay();
 	_comp_CHealth.remove(ent.healthComp);
+	ent.sprite->endPlay();
+	_comp_Sprite.remove(ent.sprite);
 	ent.endPlay();
 	_entity_ASkeletonBigShield.remove(ent);
 }

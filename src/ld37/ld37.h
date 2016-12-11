@@ -118,6 +118,7 @@ struct ENTITY ASkeleton: Actor
 	lsk_Vec2 bodySize;
 	Ref<CTarget> target;
 	Ref<CHealth> healthComp;
+	Ref<Sprite> sprite;
 	Input input;
 	i32 dir = -1;
 
@@ -159,7 +160,7 @@ struct ENTITY ASkeletonBigShield: ASkeleton
 struct MaterialAnimation
 {
 	Shader_Textured::Material* pMat;
-	f64 _time;
+	f64 _time = 0;
 	f32 frameTime;
 	i32 paused = false;
 

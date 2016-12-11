@@ -12,7 +12,8 @@ Actor::Actor()
 
 void Sprite::update(f64 delta)
 {
-	assert(transform.valid() && materialName > 0);
+	assert(transform.valid());
+	assert(materialName > 0);
 
 	lsk_Mat4 modelMatrix = lsk_Mat4Translate(lsk_Vec3{transform->position.x, transform->position.y, 0}
 											 + lsk_Vec3{localPos, 0});
